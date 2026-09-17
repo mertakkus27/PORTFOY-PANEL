@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hisse Takip Paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDEFF2; --panel:#FFFFFF; --panel2:#F6F7F9; --line:#D6DBE1; --line2:#E6EAEE;
+  --tx:#141A21; --tx2:#5C6874; --tx3:#8B95A0;
+  --up:#1E7D57; --down:#C0392B; --accent:#9A5B12; --accentbg:#F5E7D2;
+  --shadow:0 1px 2px rgba(20,26,33,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1318; --panel:#171C23; --panel2:#1D232B; --line:#2B333D; --line2:#232A33;
+    --tx:#E4E8EC; --tx2:#96A1AD; --tx3:#6F7B87;
+    --up:#46B489; --down:#E06A5A; --accent:#E0A33E; --accentbg:#2A2416;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1318; --panel:#171C23; --panel2:#1D232B; --line:#2B333D; --line2:#232A33;
+  --tx:#E4E8EC; --tx2:#96A1AD; --tx3:#6F7B87;
+  --up:#46B489; --down:#E06A5A; --accent:#E0A33E; --accentbg:#2A2416;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.num{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px; margin:0 auto; padding:20px 16px 72px}
+h1{font-size:19px; font-weight:600; margin:0; letter-spacing:-.01em}
+.sub{color:var(--tx2); font-size:13px; margin-top:2px}
+header.top{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px}
+.saveflag{font-size:12px; color:var(--tx3); min-height:18px}
+
+/* Ledger strip */
+.ledger{background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow);
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); overflow:hidden}
+.cell{padding:14px 16px; border-right:1px solid var(--line2)}
+.cell:last-child{border-right:none}
+.cell .k{font-size:12px; color:var(--tx2)}
+.cell .v{font-size:22px; font-weight:500; margin-top:3px; letter-spacing:-.02em}
+.cell .s{font-size:12px; color:var(--tx3); margin-top:2px}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* Tabs */
+nav.tabs{display:flex; gap:2px; margin:22px 0 14px; border-bottom:1px solid var(--line); overflow-x:auto}
+nav.tabs button{
+  background:none; border:none; border-bottom:2px solid transparent; color:var(--tx2);
+  font:inherit; font-size:14px; padding:9px 13px; cursor:pointer; white-space:nowrap; border-radius:4px 4px 0 0;
+}
+nav.tabs button:hover{color:var(--tx); background:var(--panel2)}
+nav.tabs button[aria-selected="true"]{color:var(--tx); border-bottom-color:var(--accent); font-weight:500}
+nav.tabs button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+section[hidden]{display:none}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); overflow:hidden}
+.card + .card{margin-top:16px}
+.card h2{font-size:14px; font-weight:600; margin:0; padding:13px 16px; border-bottom:1px solid var(--line2)}
+.card h2 span{font-weight:400; color:var(--tx2); font-size:13px; margin-left:6px}
+.pad{padding:16px}
+
+/* Tables */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:14px}
+th{font-size:12px; font-weight:500; color:var(--tx2); text-align:right; padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap; background:var(--panel2)}
+th:first-child, td:first-child{text-align:left}
+td{padding:9px 12px; border-bottom:1px solid var(--line2); text-align:right; white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tr.total td{border-top:1px solid var(--line); background:var(--panel2); font-weight:500}
+.sym{font-weight:600; letter-spacing:.01em}
+.tag{display:inline-block; font-size:11px; padding:2px 7px; border-radius:20px; border:1px solid var(--line)}
+.tag.ok{color:var(--tx2)}
+.tag.warn{color:var(--accent); border-color:var(--accent); background:var(--accentbg)}
+.tag.bad{color:var(--down); border-color:var(--down)}
+.tag.al{color:var(--up); border-color:var(--up)}
+.tag.sat{color:var(--down); border-color:var(--down)}
+.tag.ac{color:var(--tx2)}
+
+/* Inputs */
+input,select,textarea,button{font:inherit; color:var(--tx)}
+input,select{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:7px 9px; width:100%}
+input:focus,select:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+input.px{width:92px; text-align:right; padding:4px 7px; background:var(--panel2)}
+input.rp{width:70px; text-align:right; padding:4px 7px; background:var(--panel2)}
+label{display:block; font-size:12px; color:var(--tx2); margin-bottom:4px}
+.grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.btn{background:var(--tx); color:var(--panel); border:1px solid var(--tx); border-radius:6px; padding:8px 16px; cursor:pointer; font-weight:500}
+.btn:hover{opacity:.88}
+.btn.ghost{background:none; color:var(--tx2); border-color:var(--line); font-weight:400}
+.btn.ghost:hover{color:var(--tx); border-color:var(--tx2); opacity:1}
+.btn.mini{padding:3px 9px; font-size:12px; border-radius:5px}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.row-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:14px 16px; border-top:1px solid var(--line2)}
+.note{font-size:12px; color:var(--tx3); padding:0 16px 14px}
+.liveresult{background:var(--panel2); border:1px solid var(--line2); border-radius:6px; padding:9px 11px; margin-top:12px; font-size:13px; line-height:1.7}
+.liveresult b{font-family:"IBM Plex Mono",monospace}
+.empty{padding:28px 16px; text-align:center; color:var(--tx2); font-size:14px}
+.err{color:var(--down); font-size:13px}
+@media (max-width:640px){
+  .wrap{padding:14px 10px 64px}
+  .cell .v{font-size:19px}
+  td,th{padding:8px 9px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Hisse Takip Paneli</h1>
+      <div class="sub">İşlemleri gir, ortalama maliyet ve K/Z kendiliğinden hesaplansın.</div>
+    </div>
+    <div class="saveflag" id="saveflag"></div>
+  </header>
+
+  <div class="ledger" id="ledger"></div>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="portfoy" aria-selected="true">Portföy</button>
+    <button role="tab" data-tab="islem" aria-selected="false">İşlem ekle</button>
+    <button role="tab" data-tab="kayit" aria-selected="false">İşlem kaydı</button>
+    <button role="tab" data-tab="risk" aria-selected="false">Risk</button>
+    <button role="tab" data-tab="izleme" aria-selected="false">İzleme</button>
+    <button role="tab" data-tab="temel" aria-selected="false">Temel Analiz</button>
+    <button role="tab" data-tab="ayar" aria-selected="false">Ayarlar</button>
+  </nav>
+
+  <section id="tab-portfoy">
+    <div class="card">
+      <h2>Otomatik fiyat çekme <span>kendi Cloudflare Worker'ın üzerinden, Yahoo Finance verisiyle</span></h2>
+      <div class="pad">
+        <div class="note" style="padding:0 0 10px">
+          Her hisse için gerçek BIST kodunu yaz, sonuna ".IS" ekleyerek (Yahoo formatı). Örn. şirket adın "ASELSAN" ise gerçek kodu "ASELS.IS", "AKBANK" ise "AKBNK.IS" olabilir.
+        </div>
+        <label for="workerUrlInput">Worker adresi</label>
+        <input type="text" id="workerUrlInput" placeholder="https://panel.senin-adin.workers.dev" style="margin-bottom:10px">
+        <div class="scroll"><table id="priceMapTable"></table></div>
+        <div class="row-actions" style="margin-top:12px">
+          <button class="btn" id="btnFetchPrices">Fiyatları şimdi çek</button>
+          <button class="btn ghost mini" id="btnRetryFailed" hidden>Sadece hatalıları yeniden dene</button>
+          <span class="err" id="fetch-status"></span>
+        </div>
+        <div class="note" style="padding-top:10px">
+          Fiyat, senin kendi Cloudflare Worker'ının Yahoo Finance'ten çektiği tek ve net kaynaktan geliyor (tahmine dayalı alan arama yok). Hisseler worker'ı yormamak için 2'şerli gruplar halinde çekilir. Hâlâ hata alırsan "Durum" sütunundaki tam mesajı paylaş.
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Açık pozisyonlar <span>güncel fiyat hücrelerini doğrudan değiştirebilirsin</span></h2>
+      <div class="scroll"><table id="ptable"></table></div>
+      <div class="row-actions">
+        <button class="btn ghost mini" id="btnCsvP">Portföyü CSV indir</button>
+        <button class="btn ghost mini" id="btnCsvT">İşlem kaydını CSV indir</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Kapanan pozisyonlar</h2>
+      <div class="scroll"><table id="ctable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-islem" hidden>
+    <div class="card">
+      <h2>Yeni işlem</h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="f-d">Tarih</label><input type="date" id="f-d"></div>
+          <div><label for="f-s">Hisse</label><input id="f-s" list="symlist" placeholder="GARAN" autocapitalize="characters"><datalist id="symlist"></datalist></div>
+          <div><label for="f-t">İşlem</label><select id="f-t"><option>AL</option><option>SAT</option><option>ACILIS</option></select></div>
+          <div><label for="f-lot">Lot</label><input type="number" id="f-lot" min="0" step="any" inputmode="decimal"></div>
+          <div><label for="f-px">Fiyat (TL)</label><input type="number" id="f-px" min="0" step="any" inputmode="decimal"></div>
+          <div><label for="f-com">Komisyon (TL)</label><input type="number" id="f-com" min="0" step="any" value="0" inputmode="decimal"></div>
+          <div style="grid-column:1/-1"><label for="f-note">Not</label><input id="f-note" placeholder="İsteğe bağlı"></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap">
+          <button class="btn" id="btnAdd">İşlemi kaydet</button>
+          <span class="err" id="f-err"></span>
+        </div>
+      </div>
+      <div class="note">ACILIS, tabloya devir olarak girilen başlangıç bakiyesidir; maliyeti alım gibi işler ama yeni bir alım kademesi saymaz.</div>
+    </div>
+  </section>
+
+  <section id="tab-kayit" hidden>
+    <div class="card">
+      <h2>Tüm hareketler <span id="txcount"></span></h2>
+      <div class="row-actions" style="margin-bottom:12px">
+        <select id="txf-sym" style="max-width:150px"><option value="">Tüm hisseler</option></select>
+        <select id="txf-type" style="max-width:150px">
+          <option value="">Tüm işlemler</option>
+          <option value="AL">Sadece AL</option>
+          <option value="SAT">Sadece SAT</option>
+          <option value="ACILIS">Sadece ACILIS</option>
+        </select>
+        <input type="date" id="txf-from" title="Başlangıç tarihi" style="max-width:150px">
+        <input type="date" id="txf-to" title="Bitiş tarihi" style="max-width:150px">
+        <button class="btn ghost mini" id="btnTxfClear">Filtreyi temizle</button>
+      </div>
+      <div class="scroll"><table id="ttable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-risk" hidden>
+    <div class="card">
+      <h2>Risk bütçesi</h2>
+      <div class="scroll"><table id="rtable"></table></div>
+      <div class="note">İzin verilen zarar % hücresini hisse başına sen belirlersin. Risk payı = maliyet × izin verilen zarar.</div>
+    </div>
+    <div class="card">
+      <h2>Kural kontrolü</h2>
+      <div class="scroll"><table id="ktable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-izleme" hidden>
+    <div class="card">
+      <h2>İzleme listesi</h2>
+      <div class="scroll"><table id="wtable"></table></div>
+      <div class="row-actions">
+        <input id="w-s" placeholder="Hisse" style="max-width:120px">
+        <select id="w-st" style="max-width:150px"><option>Ucuz</option><option>Pahalı</option><option>İzlemede</option><option>Vazgeçildi</option></select>
+        <input id="w-t" type="number" step="any" placeholder="Hedef fiyat" style="max-width:130px">
+        <input id="w-n" placeholder="Not" style="max-width:260px">
+        <button class="btn mini" id="btnW">Ekle</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-temel" hidden>
+    <div class="card">
+      <h2>Şirket seç <span>portföyle sınırlı değilsin — herhangi bir hisseyi yazıp analiz edebilirsin</span></h2>
+      <div class="pad">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,220px))">
+          <div><label for="tf-s">Hisse</label><input id="tf-s" list="fundsymlist" placeholder="Örn. THYAO, EREGL..." autocapitalize="characters"></div>
+        </div>
+        <div class="row-actions" style="padding:12px 0 0">
+          <button class="btn ghost mini" id="btnFundLoad">Kayıtlı rakamları getir</button>
+          <button class="btn ghost mini" id="btnFundClear">Formu temizle</button>
+        </div>
+        <div class="note" style="padding:8px 0 0">Portföyünde olsun olmasın, istediğin şirketin kodunu yazıp rakamlarını girebilirsin; kaydettiklerin aşağıdaki listede kalıcı olarak tutulur.</div>
+      </div>
+      <datalist id="fundsymlist"></datalist>
+    </div>
+
+    <div class="card">
+      <h2>1. Likidite rasyoları <span>kısa vadeli borç ödeme gücü</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-donen">Dönen varlıklar (TL)</label><input type="number" step="any" id="tf-donen"></div>
+          <div><label for="tf-kvyk">Kısa vadeli yabancı kaynak (TL)</label><input type="number" step="any" id="tf-kvyk"></div>
+          <div><label for="tf-stok">Stoklar (TL)</label><input type="number" step="any" id="tf-stok"></div>
+          <div><label for="tf-nakit">Hazır değerler / nakit (TL)</label><input type="number" step="any" id="tf-nakit"></div>
+        </div>
+        <div class="liveresult" id="live-liq">Cari oran: <b>—</b> · Asit test oranı: <b>—</b> · Nakit oranı: <b>—</b></div>
+      </div>
+      <div class="note">
+        Cari oran = Dönen varlıklar ÷ Kısa vadeli yabancı kaynak &nbsp;(referans: &gt;2)<br>
+        Asit test oranı = (Dönen varlıklar − Stoklar) ÷ Kısa vadeli yabancı kaynak &nbsp;(referans: &gt;1)<br>
+        Nakit oranı = Hazır değerler ÷ Kısa vadeli yabancı kaynak &nbsp;(referans: &gt;0,20) — en katı likidite testi, ekstra olarak eklendi
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Kârlılık rasyoları</h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-netkar">Net kâr (TL)</label><input type="number" step="any" id="tf-netkar"></div>
+          <div><label for="tf-ozkaynak">Özkaynaklar (TL)</label><input type="number" step="any" id="tf-ozkaynak"></div>
+          <div><label for="tf-aktif">Toplam aktifler (TL)</label><input type="number" step="any" id="tf-aktif"></div>
+          <div><label for="tf-satis">Net satışlar (TL)</label><input type="number" step="any" id="tf-satis"></div>
+          <div><label for="tf-favok">FAVÖK (TL)</label><input type="number" step="any" id="tf-favok"></div>
+          <div><label for="tf-reel">Reel piyasa faizi (%)</label><input type="number" step="any" id="tf-reel"></div>
+        </div>
+        <div class="liveresult" id="live-kar">ROE: <b>—</b> · ROA: <b>—</b> · Net kâr marjı: <b>—</b> · FAVÖK marjı: <b>—</b></div>
+      </div>
+      <div class="note">
+        Özsermaye kârlılığı (ROE) = Net kâr ÷ Özkaynaklar &nbsp;(referans: reel piyasa faizinin üzerinde olmalı)<br>
+        Aktif kârlılığı (ROA) = Net kâr ÷ Toplam aktif — ek rasyo: kaldıraç kullanmadan asıl verimliliği gösterir<br>
+        Net kâr marjı = Net kâr ÷ Net satışlar &nbsp;·&nbsp; FAVÖK marjı = FAVÖK ÷ Net satışlar — ek rasyolar: operasyonel kârlılığı gösterir
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Borçluluk / kaldıraç <span>ek olarak eklendi — Excel'deki temel tabloda yok</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-tborc">Toplam yabancı kaynak / borç (TL)</label><input type="number" step="any" id="tf-tborc"></div>
+          <div><label for="tf-faizgider">Finansman / faiz gideri (TL)</label><input type="number" step="any" id="tf-faizgider"></div>
+        </div>
+        <div class="liveresult" id="live-borc">Borç/Özkaynak: <b>—</b> · Net borç/FAVÖK: <b>—</b> · Faiz karşılama oranı: <b>—</b></div>
+      </div>
+      <div class="note">
+        Borç/Özkaynak = Toplam yabancı kaynak ÷ Özkaynaklar &nbsp;(referans: &lt;1 sağlıklı sayılır, sektöre göre değişir)<br>
+        Net borç/FAVÖK = (Toplam borç − Hazır değerler) ÷ FAVÖK &nbsp;(referans: &lt;3 sağlıklı)<br>
+        Faiz karşılama oranı = FAVÖK ÷ Finansman gideri &nbsp;(referans: &gt;4 — şirket faizini rahat ödeyebiliyor demektir)
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. F/K – PD/DD ve içsel değer</h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-fk">Şirket F/K</label><input type="number" step="any" id="tf-fk"></div>
+          <div><label for="tf-pd">Şirket PD/DD</label><input type="number" step="any" id="tf-pd"></div>
+          <div><label for="tf-sfk">BİST/Sektör F/K</label><input type="number" step="any" id="tf-sfk"></div>
+          <div><label for="tf-spd">BİST/Sektör PD/DD</label><input type="number" step="any" id="tf-spd"></div>
+          <div><label for="tf-borsaFiyat">F/K-PD/DD hesaplanırken kullanılan fiyat</label><input type="number" step="any" id="tf-borsaFiyat"></div>
+          <div><label for="tf-guncel">Şu anki güncel fiyat</label><input type="number" step="any" id="tf-guncel"></div>
+        </div>
+        <div class="liveresult" id="live-deger">İçsel değer: <b>—</b> · Ne kadar ucuz/pahalı: <b>—</b></div>
+      </div>
+      <div class="note">
+        Olması gereken F/K bazlı fiyat = (BİST/Sektör F/K ÷ Şirket F/K) × F/K hesaplanırken kullanılan fiyat<br>
+        Olması gereken PD/DD bazlı fiyat = (BİST/Sektör PD/DD ÷ Şirket PD/DD) × aynı fiyat<br>
+        İçsel değer = bu iki değerin ortalaması &nbsp;·&nbsp; Ne kadar ucuz/pahalı = İçsel değer − Güncel fiyat
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. Temettü ve büyüme <span>ek olarak eklendi</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-temettu">Yıllık temettü (TL/hisse)</label><input type="number" step="any" id="tf-temettu"></div>
+          <div><label for="tf-buyume">Beklenen yıllık kâr büyüme oranı (%)</label><input type="number" step="any" id="tf-buyume"></div>
+        </div>
+        <div class="liveresult" id="live-temettu">Temettü verimi: <b>—</b> · PEG oranı: <b>—</b></div>
+      </div>
+      <div class="note">
+        Temettü verimi = Yıllık temettü ÷ Güncel fiyat — düzenli nakit getirisini gösterir<br>
+        PEG oranı = F/K ÷ Beklenen kâr büyüme oranı &nbsp;(referans: &lt;1 ucuz, &gt;2 pahalı sayılır) — F/K'nın büyümeye göre pahalı mı ucuz mu olduğunu gösterir
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="btnFundSave">Hesapla ve kaydet</button>
+        <span class="err" id="tf-err"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>6. DuPont analizi <span>ek olarak eklendi — ROE'nin nereden geldiğini ayrıştırır</span></h2>
+      <div class="pad" style="color:var(--tx2); font-size:13px">Ek girdi gerekmiyor — 2. bölümdeki net kâr, özkaynak, aktif ve net satış rakamlarını kullanır.
+        <div class="liveresult" id="live-dupont">Aktif devir hızı: <b>—</b> · Özsermaye çarpanı: <b>—</b> · ROE (DuPont): <b>—</b></div>
+      </div>
+      <div class="note">
+        Aktif devir hızı = Net satışlar ÷ Toplam aktif — varlıkların ne kadar verimli satışa döndüğünü gösterir<br>
+        Özsermaye çarpanı = Toplam aktif ÷ Özkaynaklar — kaldıraç (borçlanma) düzeyini gösterir<br>
+        ROE (DuPont) = Net kâr marjı × Aktif devir hızı × Özsermaye çarpanı — ROE yüksekse gerçek verimlilikten mi yoksa borçtan mı geldiğini ayırt eder
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>7. EV/FAVÖK ve PD/S <span>ek olarak eklendi — borç etkisini de hesaba katan değerleme çarpanları</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-piyasaDeger">Piyasa değeri / şirket değeri (TL)</label><input type="number" step="any" id="tf-piyasaDeger"></div>
+        </div>
+        <div class="liveresult" id="live-ev">Firma değeri: <b>—</b> · EV/FAVÖK: <b>—</b> · PD/S: <b>—</b></div>
+      </div>
+      <div class="note">
+        Firma değeri (EV) = Piyasa değeri + Toplam borç − Hazır değerler<br>
+        EV/FAVÖK = Firma değeri ÷ FAVÖK — F/K'den daha sağlıklıdır çünkü borç yükünü hesaba katar, borçlu şirketleri karşılaştırmak için kullanılır<br>
+        PD/S = Piyasa değeri ÷ Net satışlar — zarar eden veya kâr marjı geçici düşmüş şirketlerde F/K kullanılamadığında devreye girer
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>8. Kur riski — net döviz pozisyonu <span>ek olarak eklendi</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-dovizVarlik">Döviz varlıkları (TL karşılığı)</label><input type="number" step="any" id="tf-dovizVarlik"></div>
+          <div><label for="tf-dovizYukumluluk">Döviz yükümlülükleri (TL karşılığı)</label><input type="number" step="any" id="tf-dovizYukumluluk"></div>
+        </div>
+        <div class="liveresult" id="live-doviz">Net döviz pozisyonu: <b>—</b></div>
+      </div>
+      <div class="note">
+        Net döviz pozisyonu = Döviz varlıkları − Döviz yükümlülükleri<br>
+        Negatifse (açık pozisyon) kur artışında şirket zarar yazar — özellikle ithalat/ihracat ağırlıklı şirketlerde (TUPRS, THYAO gibi) göz ardı edilmemeli
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>9. Nakit dönüşüm süresi <span>ek olarak eklendi — işletme sermayesi verimliliği</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-cogs">Satışların maliyeti / COGS (TL)</label><input type="number" step="any" id="tf-cogs"></div>
+          <div><label for="tf-ortAlacak">Ortalama ticari alacaklar (TL)</label><input type="number" step="any" id="tf-ortAlacak"></div>
+          <div><label for="tf-ortBorc">Ortalama ticari borçlar (TL)</label><input type="number" step="any" id="tf-ortBorc"></div>
+        </div>
+        <div class="liveresult" id="live-ccc">Stok günü: <b>—</b> · Alacak günü: <b>—</b> · Borç günü: <b>—</b> · Nakit dönüşüm süresi: <b>—</b></div>
+      </div>
+      <div class="note">
+        Stok gün sayısı = (Stoklar ÷ COGS) × 365 &nbsp;— 1. bölümdeki "Stoklar" değeri kullanılır (ideali dönem ortalaması olsa da yaklaşık olarak dönem sonu değeri de kullanılabilir)<br>
+        Alacak gün sayısı = (Ortalama ticari alacaklar ÷ Net satışlar) × 365<br>
+        Borç gün sayısı = (Ortalama ticari borçlar ÷ COGS) × 365<br>
+        Nakit dönüşüm süresi = Stok gün sayısı + Alacak gün sayısı − Borç gün sayısı &nbsp;— kısa olması, şirketin parasını az sürede geri döndürdüğü anlamına gelir
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>10. Faaliyet kârlılığı <span>ek olarak eklendi — FAVÖK marjına karşı kontrol</span></h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="tf-faaliyetKar">Esas faaliyet kârı (TL)</label><input type="number" step="any" id="tf-faaliyetKar"></div>
+        </div>
+        <div class="liveresult" id="live-faal">Faaliyet kâr marjı: <b>—</b></div>
+      </div>
+      <div class="note">
+        Faaliyet kâr marjı = Esas faaliyet kârı ÷ Net satışlar — amortisman düşülmeden önceki FAVÖK marjından farklı olarak, asıl iş faaliyetinden gelen gerçek operasyonel kârlılığı gösterir; net kâr marjının finansman geliriyle "şişip şişmediğini" kontrol etmeye yarar
+      </div>
+    </div>
+
+    <div class="card" id="fundResultCard" hidden>
+      <h2>Sonuç <span id="fundResultSym"></span></h2>
+      <div class="scroll"><table id="fundResultTable"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Tüm hisseler özet</h2>
+      <div class="scroll"><table id="fundSummaryTable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-ayar" hidden>
+    <div class="card">
+      <h2>Parametreler</h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="s-cap">Başlangıç sermayesi (TL)</label><input type="number" id="s-cap" step="any"></div>
+          <div><label for="s-tol">Portföy risk toleransı (%)</label><input type="number" id="s-tol" step="any"></div>
+          <div><label for="s-w">Tek hissede maks. ağırlık (%)</label><input type="number" id="s-w" step="any"></div>
+          <div><label for="s-stop">Zarar-kes eşiği (%)</label><input type="number" id="s-stop" step="any"></div>
+          <div><label for="s-steps">Hisse başına maks. alım kademesi</label><input type="number" id="s-steps" step="1"></div>
+          <div><label for="s-costMethod">Maliyet hesaplama yöntemi</label><select id="s-costMethod">
+            <option value="agirlikli">Ağırlıklı ortalama (satışta ortalama değişmez)</option>
+            <option value="fifo">İlk giren ilk çıkar (FIFO)</option>
+            <option value="lifo">Son giren ilk çıkar (LIFO)</option>
+          </select></div>
+        </div>
+        <div class="note" style="padding:10px 0 0">
+          Bankan satış sonrası ortalama maliyeti değiştiriyorsa (yükseltiyor/düşürüyorsa), bankanın hesap özetindeki rakamla eşleşen yöntemi seç. Yöntemi değiştirdiğinde geçmiş tüm işlemler o yönteme göre yeniden hesaplanır.
+        </div>
+        <div style="margin-top:14px"><button class="btn" id="btnSaveSet">Kaydet</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Veri</h2>
+      <div class="pad" style="color:var(--tx2); font-size:13px">
+        Panel açtığın her seferde son halini geri yükler. Tabloyu Excel'e geri taşımak istersen portföy ve işlem kaydını CSV olarak indirebilirsin.
+      </div>
+      <div class="row-actions">
+        <button class="btn ghost mini" id="btnCsvT2">İşlem kaydını CSV indir</button>
+        <button class="btn ghost mini" id="btnReset">Excel'deki ilk haline döndür</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const SEED = {
+  tx: [
+    ["2026-01-01","ASELSAN","ACILIS",18,364.666667,0,"Açılış bakiyesi"],
+    ["2026-01-01","GLRK","ACILIS",12,176.75,0,"Açılış bakiyesi"],
+    ["2026-01-01","AEFES","ACILIS",120,19.983333,0,"Açılış bakiyesi"],
+    ["2026-01-01","TUPRS","ACILIS",4,364,0,"Açılış bakiyesi"],
+    ["2026-01-01","OYAKC","ACILIS",95,21.957895,0,"Açılış bakiyesi"],
+    ["2026-05-02","AKBANK","AL",2,69.35,1,"İlk alım"],
+    ["2026-05-05","GARAN","AL",6,128.2,3.5,"İlk alım"],
+    ["2026-05-12","SISE","AL",100,43.9,12,"Ortalama düşürme - 1. kademe"],
+    ["2026-05-19","SISE","AL",62,38.64,8.2,"Ortalama düşürme - 2. kademe"],
+    ["2026-05-25","AKBANK","SAT",1,81.85,1,"Kâr realizasyonu - yarı pozisyon"],
+    ["2026-08-25","TUPRS","AL",1,378.75,0,""],
+    ["2026-08-25","GARAN","SAT",1,136.4,0,""],
+    ["2026-08-25","OYAKC","SAT",19,23.18,0,""],
+    ["2026-08-28","GLRK","AL",2,168,0,""],
+    ["2026-08-28","AEFES","AL",24,18.28,0,""],
+    ["2026-08-31","ASELSAN","AL",4,383.25,0,""],
+    ["2026-09-02","GLRK","AL",2,159.1,0,""],
+    ["2026-09-07","SISE","SAT",32,45.06,0,""],
+    ["2026-09-08","SISE","SAT",32,47.2,0,""],
+    ["2026-09-14","FROTO","AL",42,82.85,0,"İlk alım"],
+    ["2026-09-14","ASELSAN","AL",4,374,0,""],
+    ["2026-09-15","OYAKC","AL",15,21.2,0,""],
+    ["2026-09-15","GLRK","AL",3,168.2,0,""],
+    ["2026-09-15","SISE","AL",20,42.74,0,""],
+    ["2026-09-15","TUPRS","AL",1,415.25,0,""],
+    ["2026-09-15","FROTO","AL",8,78.7,0,""],
+    ["2026-09-16","OYAKC","AL",15,18.98,0,""],
+    ["2026-09-16","OYAKC","AL",15,20.1,0,""],
+    ["2026-09-16","TUPRS","AL",1,393,0,""],
+    ["2026-09-16","AEFES","AL",29,17.77,0,""],
+    ["2026-09-16","AEFES","AL",29,18.75,0,""],
+    ["2026-09-16","GLRK","AL",3,150.5,0,""],
+    ["2026-09-16","GLRK","AL",3,159.3,0,""],
+    ["2026-09-16","ASELSAN","AL",4,354.5,0,""],
+    ["2026-09-16","SISE","AL",20,38.24,0,""],
+    ["2026-09-16","SISE","AL",20,40.48,0,""],
+    ["2026-09-16","GARAN","AL",1,120.8,0,""],
+    ["2026-09-16","GARAN","AL",1,127.5,0,""],
+    ["2026-09-16","FROTO","AL",8,74.55,0,""]
+  ].map((r,i)=>({id:"s"+i, d:r[0], s:r[1], t:r[2], lot:r[3], px:r[4], com:r[5], note:r[6]})),
+  prices:{GARAN:134.2,SISE:45.08,ASELSAN:393.75,GLRK:177,AEFES:19.74,TUPRS:413.5,AKBANK:72.7,OYAKC:22.32,FROTO:82.85},
+  fetchMap:{},
+  riskPct:{GARAN:.15,SISE:.2,ASELSAN:.2,GLRK:.15,AEFES:.15,TUPRS:.15,AKBANK:.1,OYAKC:.15,FROTO:.15},
+  settings:{capital:100000, riskTol:.5, maxWeight:.2, stopPct:-.15, maxSteps:4, costMethod:"agirlikli", workerUrl:"https://panel.mert-akkus27.workers.dev"},
+  watch:[{s:"TUPRS",status:"Ucuz",target:null,note:"Alındı - takipte"},
+         {s:"FROTO",status:"İzlemede",target:null,note:"444 06 30 - Yatırım Hizmetleri hattı"},
+         {s:"OYAKC",status:"Ucuz",target:null,note:"Alındı - takipte"}],
+  fund:{}
+};
+
+let S = clone(SEED);
+let txFilter = {sym:"", type:"", from:"", to:""};
+let db = null, downloads = null, ready = false;
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+const nf = (d=2)=>new Intl.NumberFormat("tr-TR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const money=v=>nf(2).format(v||0);
+const lotf=v=>nf(Number.isInteger(v)?0:2).format(v||0);
+const pct=v=>nf(1).format((v||0)*100)+"%";
+const sign=v=>(v>0?"up":v<0?"down":"");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Hesaplama: banka mantığı, ağırlıklı ortalama maliyet ---------- */
+function compute(){
+  const method = S.settings.costMethod || "agirlikli";
+  const rows = {}, order = [];
+  const tx = S.tx.slice().sort((a,b)=>(a.d<b.d?-1:a.d>b.d?1:0));
+  for(const t of tx){
+    const s=t.s; if(!s) continue;
+    if(!rows[s]){ rows[s]={s, lot:0, cost:0, avg:0, realized:0, soldCost:0, buys:0, bought:0, sold:0, lots:[]}; order.push(s); }
+    const r=rows[s];
+    const gross=(t.lot||0)*(t.px||0), com=t.com||0;
+    if(t.t==="AL"||t.t==="ACILIS"){
+      r.lot+=t.lot; r.cost+=gross+com; r.bought+=t.lot;
+      if(t.t==="AL") r.buys++;
+      r.avg = r.lot>0 ? r.cost/r.lot : 0;
+      if(method!=="agirlikli") r.lots.push({qty:t.lot, unit:(gross+com)/(t.lot||1)});
+    } else if(t.t==="SAT"){
+      let basis;
+      if(method==="agirlikli"){
+        basis=(t.lot||0)*r.avg;
+      } else {
+        let remaining=t.lot||0; basis=0;
+        while(remaining>0.0000001 && r.lots.length){
+          const idx = method==="lifo" ? r.lots.length-1 : 0;
+          const lot=r.lots[idx];
+          const take=Math.min(lot.qty, remaining);
+          basis += take*lot.unit;
+          lot.qty -= take; remaining -= take;
+          if(lot.qty<=0.0000001) r.lots.splice(idx,1);
+        }
+      }
+      r.realized += (gross-com) - basis;
+      r.soldCost += basis;
+      r.lot-=t.lot; r.cost-=basis; r.sold+=t.lot;
+      if(r.lot<=0.0000001){ r.lot=0; r.cost=0; r.lots=[]; }
+      r.avg = r.lot>0 ? r.cost/r.lot : r.avg;
+    }
+  }
+  const open=[], closed=[];
+  for(const s of order){
+    const r=rows[s];
+    r.price = Number(S.prices[s]) || 0;
+    r.value = r.lot*r.price;
+    r.unreal = r.value-r.cost;
+    r.unrealPct = r.cost>0 ? r.unreal/r.cost : 0;
+    r.realPct = r.soldCost>0 ? r.realized/r.soldCost : 0;
+    r.total = r.realized+r.unreal;
+    (r.lot>0?open:closed).push(r);
+  }
+  open.sort((a,b)=>b.value-a.value);
+  const T={cost:0,value:0,unreal:0,realized:0,lot:0};
+  for(const r of open){ T.cost+=r.cost; T.value+=r.value; T.unreal+=r.unreal; T.lot+=r.lot; }
+  for(const r of open.concat(closed)) T.realized+=r.realized;
+  T.total=T.unreal+T.realized;
+  T.cash=(S.settings.capital||0)-T.cost+T.realized;
+  T.retPct=S.settings.capital>0 ? T.total/S.settings.capital : 0;
+  for(const r of open) r.weight = T.cost>0 ? r.cost/T.cost : 0;
+  return {open, closed, T};
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const {open, closed, T}=compute();
+  // ledger
+  document.getElementById("ledger").innerHTML = [
+    ["Açık pozisyon maliyeti", money(T.cost)+" ₺", lotf(T.lot)+" lot · "+open.length+" hisse",""],
+    ["Güncel değer", money(T.value)+" ₺","",""],
+    ["Gerçekleşmemiş K/Z", (T.unreal>=0?"+":"")+money(T.unreal)+" ₺", T.cost>0?pct(T.unreal/T.cost):"", sign(T.unreal)],
+    ["Gerçekleşmiş K/Z", (T.realized>=0?"+":"")+money(T.realized)+" ₺","", sign(T.realized)],
+    ["Toplam K/Z", (T.total>=0?"+":"")+money(T.total)+" ₺", "sermayeye göre "+pct(T.retPct), sign(T.total)],
+    ["Nakit bakiye", money(T.cash)+" ₺", "sermaye "+money(S.settings.capital)+" ₺",""]
+  ].map(c=>`<div class="cell"><div class="k">${c[0]}</div><div class="v num ${c[3]}">${c[1]}</div><div class="s num">${c[2]}</div></div>`).join("");
+
+  // portföy
+  const ph=["Hisse","Lot","Ort. maliyet","Maliyet","Güncel fiyat","Değer","Gerç.memiş K/Z","%","Gerç. K/Z","Ağırlık"];
+  let h=`<thead><tr>${ph.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>`;
+  if(!open.length) h+=`<tr><td colspan="10" class="empty">Açık pozisyon yok. “İşlem ekle” sekmesinden ilk alımı gir.</td></tr>`;
+  for(const r of open){
+    h+=`<tr>
+      <td class="sym">${esc(r.s)}</td>
+      <td class="num">${lotf(r.lot)}</td>
+      <td class="num">${money(r.avg)}</td>
+      <td class="num">${money(r.cost)}</td>
+      <td><input class="px num" type="number" step="any" min="0" value="${r.price}" data-price="${esc(r.s)}" aria-label="${esc(r.s)} güncel fiyat"></td>
+      <td class="num">${money(r.value)}</td>
+      <td class="num ${sign(r.unreal)}">${(r.unreal>=0?"+":"")+money(r.unreal)}</td>
+      <td class="num ${sign(r.unreal)}">${pct(r.unrealPct)}</td>
+      <td class="num ${sign(r.realized)}">${r.realized?((r.realized>0?"+":"")+money(r.realized)):"—"}</td>
+      <td class="num">${pct(r.weight)}</td></tr>`;
+  }
+  if(open.length) h+=`<tr class="total"><td>Toplam</td><td class="num">${lotf(T.lot)}</td><td></td><td class="num">${money(T.cost)}</td><td></td><td class="num">${money(T.value)}</td><td class="num ${sign(T.unreal)}">${(T.unreal>=0?"+":"")+money(T.unreal)}</td><td class="num ${sign(T.unreal)}">${T.cost>0?pct(T.unreal/T.cost):""}</td><td class="num ${sign(T.realized)}">${(T.realized>=0?"+":"")+money(T.realized)}</td><td class="num">100,0%</td></tr>`;
+  document.getElementById("ptable").innerHTML=h+"</tbody>";
+
+  // kapananlar
+  let c=`<thead><tr><th>Hisse</th><th>Alınan lot</th><th>Satılan lot</th><th>Satış maliyeti</th><th>Gerçekleşmiş K/Z</th><th>%</th></tr></thead><tbody>`;
+  if(!closed.length) c+=`<tr><td colspan="6" class="empty">Tamamen kapatılmış pozisyon yok.</td></tr>`;
+  for(const r of closed) c+=`<tr><td class="sym">${esc(r.s)}</td><td class="num">${lotf(r.bought)}</td><td class="num">${lotf(r.sold)}</td><td class="num">${money(r.soldCost)}</td><td class="num ${sign(r.realized)}">${(r.realized>=0?"+":"")+money(r.realized)}</td><td class="num ${sign(r.realized)}">${pct(r.realPct)}</td></tr>`;
+  document.getElementById("ctable").innerHTML=c+"</tbody>";
+
+  // işlem kaydı
+  const allTx=S.tx.slice().sort((a,b)=>(a.d<b.d?1:a.d>b.d?-1:0));
+  const txSyms=[...new Set(S.tx.map(x=>x.s))].sort();
+  const symSel=document.getElementById("txf-sym");
+  if(symSel && document.activeElement!==symSel){
+    const cur=txFilter.sym;
+    symSel.innerHTML=`<option value="">Tüm hisseler</option>`+txSyms.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(s)}</option>`).join("");
+  }
+  let tx=allTx;
+  if(txFilter.sym) tx=tx.filter(x=>x.s===txFilter.sym);
+  if(txFilter.type) tx=tx.filter(x=>x.t===txFilter.type);
+  if(txFilter.from) tx=tx.filter(x=>x.d>=txFilter.from);
+  if(txFilter.to) tx=tx.filter(x=>x.d<=txFilter.to);
+  let t=`<thead><tr><th>Tarih</th><th>Hisse</th><th>İşlem</th><th>Lot</th><th>Fiyat</th><th>Komisyon</th><th>Net tutar</th><th>Not</th><th></th></tr></thead><tbody>`;
+  if(!tx.length) t+=`<tr><td colspan="9" class="empty">${allTx.length?"Filtreyle eşleşen işlem yok.":"Henüz işlem yok."}</td></tr>`;
+  for(const x of tx){
+    const g=(x.lot||0)*(x.px||0), net = x.t==="SAT" ? g-(x.com||0) : g+(x.com||0);
+    const cls = x.t==="AL"?"al":x.t==="SAT"?"sat":"ac";
+    t+=`<tr><td class="num">${esc(x.d)}</td><td class="sym">${esc(x.s)}</td><td><span class="tag ${cls}">${esc(x.t)}</span></td>
+      <td class="num">${lotf(x.lot)}</td><td class="num">${money(x.px)}</td><td class="num">${money(x.com)}</td><td class="num">${money(net)}</td>
+      <td style="text-align:left; color:var(--tx2); white-space:normal">${esc(x.note)}</td>
+      <td><button class="btn ghost mini" data-del="${esc(x.id)}">Sil</button></td></tr>`;
+  }
+  document.getElementById("ttable").innerHTML=t+"</tbody>";
+  document.getElementById("txcount").textContent = (tx.length===allTx.length) ? (allTx.length+" hareket") : (tx.length+" / "+allTx.length+" hareket");
+
+  // risk
+  const tol=S.settings.riskTol||0, budget=T.cost*tol;
+  let rp=0;
+  let rr=`<thead><tr><th>Hisse</th><th>Maliyet</th><th>K/Z %</th><th>İzin verilen zarar</th><th>Zarar-kes fiyatı</th><th>Risk payı</th><th>Kalan tampon</th><th>Durum</th></tr></thead><tbody>`;
+  if(!open.length) rr+=`<tr><td colspan="8" class="empty">Açık pozisyon yok.</td></tr>`;
+  for(const r of open){
+    const j=Number(S.riskPct[r.s]); const jj=isFinite(j)&&j>0?j:0;
+    const stop=r.avg*(1-jj), share=r.cost*jj, buf=jj+r.unrealPct; rp+=share;
+    const st = jj===0 ? ["ok","—"] : (r.unrealPct<=-jj ? ["bad","ZARAR-KES"] : (buf<=0.3*jj ? ["warn","DİKKAT"] : ["ok","OK"]));
+    rr+=`<tr><td class="sym">${esc(r.s)}</td><td class="num">${money(r.cost)}</td>
+      <td class="num ${sign(r.unreal)}">${pct(r.unrealPct)}</td>
+      <td><input class="rp num" type="number" step="1" min="0" value="${(jj*100).toFixed(0)}" data-risk="${esc(r.s)}" aria-label="${esc(r.s)} izin verilen zarar yüzdesi"></td>
+      <td class="num">${money(stop)}</td><td class="num">${money(share)}</td><td class="num">${pct(buf)}</td>
+      <td><span class="tag ${st[0]}">${st[1]}</span></td></tr>`;
+  }
+  rr+=`<tr class="total"><td>Toplam</td><td class="num">${money(T.cost)}</td><td></td><td></td><td></td><td class="num">${money(rp)}</td><td colspan="2" style="text-align:left; font-weight:400; color:var(--tx2)">Risk bütçesi ${money(budget)} ₺ · kullanım ${budget>0?pct(rp/budget):"—"}</td></tr>`;
+  document.getElementById("rtable").innerHTML=rr+"</tbody>";
+
+  // kural kontrolü
+  let kk=`<thead><tr><th>Hisse</th><th>Ağırlık</th><th>Ağırlık durumu</th><th>Gerç.memiş K/Z %</th><th>Zarar-kes</th><th>Alım kademesi</th><th>Kademe durumu</th></tr></thead><tbody>`;
+  if(!open.length) kk+=`<tr><td colspan="7" class="empty">Açık pozisyon yok.</td></tr>`;
+  for(const r of open){
+    const wOver=r.weight>S.settings.maxWeight, sOver=r.unrealPct<=S.settings.stopPct, kOver=r.buys>=S.settings.maxSteps;
+    kk+=`<tr><td class="sym">${esc(r.s)}</td><td class="num">${pct(r.weight)}</td>
+      <td><span class="tag ${wOver?"warn":"ok"}">${wOver?"LİMİT AŞILDI":"OK"}</span></td>
+      <td class="num ${sign(r.unreal)}">${pct(r.unrealPct)}</td>
+      <td><span class="tag ${sOver?"bad":"ok"}">${sOver?"ZARAR-KES":"OK"}</span></td>
+      <td class="num">${r.buys}</td>
+      <td><span class="tag ${kOver?"warn":"ok"}">${kOver?"LİMİT DOLDU":"OK"}</span></td></tr>`;
+  }
+  document.getElementById("ktable").innerHTML=kk+"</tbody>";
+
+  // izleme
+  let w=`<thead><tr><th>Hisse</th><th>Durum</th><th>Hedef fiyat</th><th>Güncel</th><th>Not</th><th></th></tr></thead><tbody>`;
+  if(!S.watch.length) w+=`<tr><td colspan="6" class="empty">Liste boş. Aşağıdan hisse ekle.</td></tr>`;
+  S.watch.forEach((x,i)=>{
+    const cur=Number(S.prices[x.s])||0;
+    w+=`<tr><td class="sym">${esc(x.s)}</td><td style="text-align:left">${esc(x.status)}</td>
+      <td class="num">${x.target?money(x.target):"—"}</td><td class="num">${cur?money(cur):"—"}</td>
+      <td style="text-align:left; color:var(--tx2); white-space:normal">${esc(x.note)}</td>
+      <td><button class="btn ghost mini" data-wdel="${i}">Sil</button></td></tr>`;
+  });
+  document.getElementById("wtable").innerHTML=w+"</tbody>";
+
+  // temel analiz özet tablosu
+  fundRenderSummary();
+  priceMapRender();
+
+  // datalist + ayarlar
+  const syms=[...new Set(S.tx.map(x=>x.s))].sort();
+  document.getElementById("symlist").innerHTML=syms.map(s=>`<option value="${esc(s)}">`).join("");
+  const fundSyms=[...new Set([...syms, ...Object.keys(S.fund||{})])].sort();
+  document.getElementById("fundsymlist").innerHTML=fundSyms.map(s=>`<option value="${esc(s)}">`).join("");
+  document.getElementById("s-cap").value=S.settings.capital;
+  document.getElementById("s-tol").value=+(S.settings.riskTol*100).toFixed(2);
+  document.getElementById("s-w").value=+(S.settings.maxWeight*100).toFixed(2);
+  document.getElementById("s-stop").value=+(S.settings.stopPct*100).toFixed(2);
+  document.getElementById("s-steps").value=S.settings.maxSteps;
+  document.getElementById("s-costMethod").value=S.settings.costMethod||"agirlikli";
+}
+
+/* ---------- Temel analiz ---------- */
+function fundCompute(f){
+  const n=x=>{ const v=Number(x); return isFinite(v)?v:0; };
+  const donen=n(f.donen), kvyk=n(f.kvyk), stok=n(f.stok), nakit=n(f.nakit);
+  const netkar=n(f.netkar), ozkaynak=n(f.ozkaynak), aktif=n(f.aktif), satis=n(f.satis), favok=n(f.favok), reel=n(f.reel);
+  const tborc=n(f.tborc), faizgider=n(f.faizgider);
+  const fk=n(f.fk), pd=n(f.pd), sfk=n(f.sfk), spd=n(f.spd), borsaFiyat=n(f.borsaFiyat), guncel=n(f.guncel);
+  const temettu=n(f.temettu), buyume=n(f.buyume);
+  const piyasaDeger=n(f.piyasaDeger);
+  const dovizVarlik=n(f.dovizVarlik), dovizYukumluluk=n(f.dovizYukumluluk);
+  const cogs=n(f.cogs), ortAlacak=n(f.ortAlacak), ortBorc=n(f.ortBorc);
+  const faaliyetKar=n(f.faaliyetKar);
+
+  const cari = kvyk>0 ? donen/kvyk : null;
+  const asit = kvyk>0 ? (donen-stok)/kvyk : null;
+  const nakitOrani = kvyk>0 ? nakit/kvyk : null;
+  const roe = ozkaynak>0 ? netkar/ozkaynak : null;
+  const roa = aktif>0 ? netkar/aktif : null;
+  const netKarMarji = satis>0 ? netkar/satis : null;
+  const favokMarji = satis>0 ? favok/satis : null;
+  const borcOzkaynak = ozkaynak>0 ? tborc/ozkaynak : null;
+  const netBorcFavok = favok>0 ? (tborc-nakit)/favok : null;
+  const faizKarsilama = faizgider>0 ? favok/faizgider : null;
+  const olmasiGerekenFk = (fk>0 && borsaFiyat>0) ? (sfk/fk)*borsaFiyat : null;
+  const olmasiGerekenPd = (pd>0 && borsaFiyat>0) ? (spd/pd)*borsaFiyat : null;
+  const icselDeger = (olmasiGerekenFk!=null && olmasiGerekenPd!=null) ? (olmasiGerekenFk+olmasiGerekenPd)/2 : null;
+  const neKadar = (icselDeger!=null && guncel>0) ? icselDeger-guncel : null;
+  const neKadarPct = (neKadar!=null && guncel>0) ? neKadar/guncel*100 : null;
+  const temettuVerimi = guncel>0 ? temettu/guncel*100 : null;
+  const peg = (buyume>0 && fk>0) ? fk/buyume : null;
+
+  const aktifDevir = aktif>0 ? satis/aktif : null;
+  const ozkaynakCarpani = ozkaynak>0 ? aktif/ozkaynak : null;
+  const roeDupont = (netKarMarji!=null && aktifDevir!=null && ozkaynakCarpani!=null) ? netKarMarji*aktifDevir*ozkaynakCarpani : null;
+
+  const firmaDegeri = piyasaDeger>0 ? piyasaDeger+tborc-nakit : null;
+  const evFavok = (firmaDegeri!=null && favok>0) ? firmaDegeri/favok : null;
+  const pdS = (piyasaDeger>0 && satis>0) ? piyasaDeger/satis : null;
+
+  const netDoviz = (f.dovizVarlik!==undefined && f.dovizVarlik!=="") || (f.dovizYukumluluk!==undefined && f.dovizYukumluluk!=="") ? dovizVarlik-dovizYukumluluk : null;
+
+  const stokGun = cogs>0 ? (stok/cogs)*365 : null;
+  const alacakGun = satis>0 ? (ortAlacak/satis)*365 : null;
+  const borcGun = cogs>0 ? (ortBorc/cogs)*365 : null;
+  const ccc = (stokGun!=null && alacakGun!=null && borcGun!=null) ? stokGun+alacakGun-borcGun : null;
+
+  const faaliyetMarji = satis>0 ? faaliyetKar/satis : null;
+
+  return {cari,asit,nakitOrani,roe,roa,netKarMarji,favokMarji,borcOzkaynak,netBorcFavok,faizKarsilama,
+    olmasiGerekenFk,olmasiGerekenPd,icselDeger,neKadar,neKadarPct,temettuVerimi,peg,reel,
+    aktifDevir,ozkaynakCarpani,roeDupont,firmaDegeri,evFavok,pdS,netDoviz,stokGun,alacakGun,borcGun,ccc,faaliyetMarji};
+}
+const fnum=(v,d=2)=>v==null?"—":nf(d).format(v);
+const fpct=(v,d=1)=>v==null?"—":nf(d).format(v)+"%";
+function fundTagOk(cond){ return cond===null?"": (cond?"ok\">OK":"bad\">DÜŞÜK"); }
+function fundReadForm(){
+  const g=id=>document.getElementById(id).value;
+  return {donen:g("tf-donen"),kvyk:g("tf-kvyk"),stok:g("tf-stok"),nakit:g("tf-nakit"),
+    netkar:g("tf-netkar"),ozkaynak:g("tf-ozkaynak"),aktif:g("tf-aktif"),satis:g("tf-satis"),favok:g("tf-favok"),reel:g("tf-reel"),
+    tborc:g("tf-tborc"),faizgider:g("tf-faizgider"),
+    fk:g("tf-fk"),pd:g("tf-pd"),sfk:g("tf-sfk"),spd:g("tf-spd"),borsaFiyat:g("tf-borsaFiyat"),guncel:g("tf-guncel"),
+    temettu:g("tf-temettu"),buyume:g("tf-buyume"),
+    piyasaDeger:g("tf-piyasaDeger"),
+    dovizVarlik:g("tf-dovizVarlik"),dovizYukumluluk:g("tf-dovizYukumluluk"),
+    cogs:g("tf-cogs"),ortAlacak:g("tf-ortAlacak"),ortBorc:g("tf-ortBorc"),
+    faaliyetKar:g("tf-faaliyetKar")};
+}
+function fundWriteForm(f){
+  const set=(id,v)=>document.getElementById(id).value=(v===undefined||v===null)?"":v;
+  set("tf-donen",f.donen); set("tf-kvyk",f.kvyk); set("tf-stok",f.stok); set("tf-nakit",f.nakit);
+  set("tf-netkar",f.netkar); set("tf-ozkaynak",f.ozkaynak); set("tf-aktif",f.aktif); set("tf-satis",f.satis); set("tf-favok",f.favok); set("tf-reel",f.reel);
+  set("tf-tborc",f.tborc); set("tf-faizgider",f.faizgider);
+  set("tf-fk",f.fk); set("tf-pd",f.pd); set("tf-sfk",f.sfk); set("tf-spd",f.spd); set("tf-borsaFiyat",f.borsaFiyat); set("tf-guncel",f.guncel);
+  set("tf-temettu",f.temettu); set("tf-buyume",f.buyume);
+  set("tf-piyasaDeger",f.piyasaDeger);
+  set("tf-dovizVarlik",f.dovizVarlik); set("tf-dovizYukumluluk",f.dovizYukumluluk);
+  set("tf-cogs",f.cogs); set("tf-ortAlacak",f.ortAlacak); set("tf-ortBorc",f.ortBorc);
+  set("tf-faaliyetKar",f.faaliyetKar);
+}
+function liveFundUpdate(){
+  const f=fundReadForm();
+  const c=fundCompute(f);
+  const set=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  set("live-liq", `Cari oran: <b>${fnum(c.cari)}</b> (referans &gt;2) · Asit test oranı: <b>${fnum(c.asit)}</b> (&gt;1) · Nakit oranı: <b>${fnum(c.nakitOrani)}</b> (&gt;0,20)`);
+  set("live-kar", `ROE: <b>${fpct(c.roe==null?null:c.roe*100)}</b> · ROA: <b>${fpct(c.roa==null?null:c.roa*100)}</b> · Net kâr marjı: <b>${fpct(c.netKarMarji==null?null:c.netKarMarji*100)}</b> · FAVÖK marjı: <b>${fpct(c.favokMarji==null?null:c.favokMarji*100)}</b>`);
+  set("live-borc", `Borç/Özkaynak: <b>${fnum(c.borcOzkaynak)}</b> · Net borç/FAVÖK: <b>${fnum(c.netBorcFavok)}</b> · Faiz karşılama oranı: <b>${fnum(c.faizKarsilama)}</b>`);
+  set("live-deger", `İçsel değer: <b>${fnum(c.icselDeger)}</b> · Ne kadar ucuz/pahalı: <b>${fnum(c.neKadar)}</b> (${fpct(c.neKadarPct)})`);
+  set("live-temettu", `Temettü verimi: <b>${fpct(c.temettuVerimi)}</b> · PEG oranı: <b>${fnum(c.peg)}</b>`);
+  set("live-dupont", `Aktif devir hızı: <b>${fnum(c.aktifDevir)}</b> · Özsermaye çarpanı: <b>${fnum(c.ozkaynakCarpani)}</b> · ROE (DuPont): <b>${fpct(c.roeDupont==null?null:c.roeDupont*100)}</b>`);
+  set("live-ev", `Firma değeri: <b>${fnum(c.firmaDegeri)}</b> · EV/FAVÖK: <b>${fnum(c.evFavok)}</b> · PD/S: <b>${fnum(c.pdS)}</b>`);
+  set("live-doviz", `Net döviz pozisyonu: <b>${fnum(c.netDoviz)}</b>${c.netDoviz!=null && c.netDoviz<0 ? ' <span class="tag warn">AÇIK POZİSYON</span>':''}`);
+  set("live-ccc", `Stok günü: <b>${fnum(c.stokGun,0)}</b> · Alacak günü: <b>${fnum(c.alacakGun,0)}</b> · Borç günü: <b>${fnum(c.borcGun,0)}</b> · Nakit dönüşüm süresi: <b>${fnum(c.ccc,0)}</b> gün`);
+  set("live-faal", `Faaliyet kâr marjı: <b>${fpct(c.faaliyetMarji==null?null:c.faaliyetMarji*100)}</b>`);
+}
+function fundShowResult(sym, c){
+  const card=document.getElementById("fundResultCard");
+  card.hidden=false;
+  document.getElementById("fundResultSym").textContent="— "+sym;
+  const rows=[
+    ["Cari oran", fnum(c.cari), ">2", c.cari==null?"":c.cari>2?"ok":"bad", c.cari==null?"":c.cari>2?"OK":"DÜŞÜK"],
+    ["Asit test oranı", fnum(c.asit), ">1", c.asit==null?"":c.asit>1?"ok":"bad", c.asit==null?"":c.asit>1?"OK":"DÜŞÜK"],
+    ["Nakit oranı", fnum(c.nakitOrani), ">0,20", c.nakitOrani==null?"":c.nakitOrani>0.2?"ok":"warn", c.nakitOrani==null?"":c.nakitOrani>0.2?"OK":"DÜŞÜK"],
+    ["Özsermaye kârlılığı (ROE)", fpct(c.roe==null?null:c.roe*100), "reel faiz: "+fpct(c.reel), c.roe==null?"":(c.roe*100>c.reel?"ok":"bad"), c.roe==null?"":(c.roe*100>c.reel?"ÜSTÜNDE":"DÜŞÜK")],
+    ["Aktif kârlılığı (ROA)", fpct(c.roa==null?null:c.roa*100), "—", "", ""],
+    ["Net kâr marjı", fpct(c.netKarMarji==null?null:c.netKarMarji*100), "—", "", ""],
+    ["FAVÖK marjı", fpct(c.favokMarji==null?null:c.favokMarji*100), "—", "", ""],
+    ["Borç/Özkaynak", fnum(c.borcOzkaynak), "<1", c.borcOzkaynak==null?"":c.borcOzkaynak<1?"ok":"warn", c.borcOzkaynak==null?"":c.borcOzkaynak<1?"OK":"YÜKSEK"],
+    ["Net borç/FAVÖK", fnum(c.netBorcFavok), "<3", c.netBorcFavok==null?"":c.netBorcFavok<3?"ok":"warn", c.netBorcFavok==null?"":c.netBorcFavok<3?"OK":"YÜKSEK"],
+    ["Faiz karşılama oranı", fnum(c.faizKarsilama), ">4", c.faizKarsilama==null?"":c.faizKarsilama>4?"ok":"warn", c.faizKarsilama==null?"":c.faizKarsilama>4?"OK":"DÜŞÜK"],
+    ["Olması gereken F/K bazlı fiyat", fnum(c.olmasiGerekenFk), "", "", ""],
+    ["Olması gereken PD/DD bazlı fiyat", fnum(c.olmasiGerekenPd), "", "", ""],
+    ["İçsel değer", fnum(c.icselDeger), "", "", ""],
+    ["Ne kadar ucuz/pahalı", fnum(c.neKadar), fpct(c.neKadarPct), c.neKadar==null?"":c.neKadar>0?"al":"sat", c.neKadar==null?"":c.neKadar>0?"UCUZ":"PAHALI"],
+    ["Temettü verimi", fpct(c.temettuVerimi), "—", "", ""],
+    ["PEG oranı", fnum(c.peg), "<1", c.peg==null?"":c.peg<1?"ok":"warn", c.peg==null?"":c.peg<1?"UCUZ":"PAHALI"],
+    ["Aktif devir hızı", fnum(c.aktifDevir), "—", "", ""],
+    ["Özsermaye çarpanı", fnum(c.ozkaynakCarpani), "—", "", ""],
+    ["ROE (DuPont kontrolü)", fpct(c.roeDupont==null?null:c.roeDupont*100), "1. yöntemle aynı çıkmalı", "", ""],
+    ["Firma değeri (EV)", fnum(c.firmaDegeri), "", "", ""],
+    ["EV/FAVÖK", fnum(c.evFavok), "sektörle kıyasla", "", ""],
+    ["PD/S", fnum(c.pdS), "sektörle kıyasla", "", ""],
+    ["Net döviz pozisyonu", fnum(c.netDoviz), c.netDoviz==null?"":(c.netDoviz>=0?"":"kur riski var"), c.netDoviz==null?"":(c.netDoviz>=0?"ok":"warn"), c.netDoviz==null?"":(c.netDoviz>=0?"KAPALI":"AÇIK POZİSYON")],
+    ["Stok gün sayısı", fnum(c.stokGun,0), "gün", "", ""],
+    ["Alacak gün sayısı", fnum(c.alacakGun,0), "gün", "", ""],
+    ["Borç gün sayısı", fnum(c.borcGun,0), "gün", "", ""],
+    ["Nakit dönüşüm süresi", fnum(c.ccc,0), "gün — kısa olması iyi", "", ""],
+    ["Faaliyet kâr marjı", fpct(c.faaliyetMarji==null?null:c.faaliyetMarji*100), "FAVÖK marjıyla kıyasla", "", ""]
+  ];
+  let h=`<thead><tr><th>Rasyo</th><th>Değer</th><th>Referans</th><th>Durum</th></tr></thead><tbody>`;
+  for(const r of rows){
+    h+=`<tr><td style="text-align:left">${r[0]}</td><td class="num">${r[1]}</td><td style="text-align:left; color:var(--tx2)">${r[2]}</td>
+      <td>${r[4]?`<span class="tag ${r[3]}">${r[4]}</span>`:""}</td></tr>`;
+  }
+  document.getElementById("fundResultTable").innerHTML=h+"</tbody>";
+}
+function fundRenderSummary(){
+  const syms=Object.keys(S.fund||{}).sort();
+  let h=`<thead><tr><th>Hisse</th><th>Cari oran</th><th>Asit test</th><th>ROE</th><th>İçsel değer</th><th>Güncel</th><th>Ne kadar ucuz</th><th>%</th><th>Durum</th></tr></thead><tbody>`;
+  if(!syms.length) h+=`<tr><td colspan="9" class="empty">Henüz kayıtlı temel analiz yok.</td></tr>`;
+  for(const s of syms){
+    const c=fundCompute(S.fund[s]);
+    const guncel=Number(S.fund[s].guncel)||0;
+    const durum = c.neKadar==null?"":(c.neKadar>0?["al","UCUZ"]:["sat","PAHALI"]);
+    h+=`<tr><td class="sym">${esc(s)}</td><td class="num">${fnum(c.cari)}</td><td class="num">${fnum(c.asit)}</td>
+      <td class="num">${c.roe==null?"—":fpct(c.roe*100)}</td><td class="num">${fnum(c.icselDeger)}</td>
+      <td class="num">${guncel?money(guncel):"—"}</td><td class="num">${fnum(c.neKadar)}</td><td class="num">${fpct(c.neKadarPct)}</td>
+      <td>${durum?`<span class="tag ${durum[0]}">${durum[1]}</span>`:""}</td></tr>`;
+  }
+  document.getElementById("fundSummaryTable").innerHTML=h+"</tbody>";
+}
+document.getElementById("tab-temel").addEventListener("input",liveFundUpdate);
+document.getElementById("btnFundLoad").addEventListener("click",()=>{
+  const s=document.getElementById("tf-s").value.trim().toUpperCase();
+  const err=document.getElementById("tf-err"); err.textContent="";
+  if(!s){ err.textContent="Önce hisse kodu yaz."; return; }
+  if(S.fund && S.fund[s]) fundWriteForm(S.fund[s]);
+  else { fundWriteForm({}); if(S.prices[s]) document.getElementById("tf-guncel").value=S.prices[s]; err.textContent=s+" için kayıtlı veri yok, boş form açıldı."; }
+  document.getElementById("fundResultCard").hidden=true;
+  liveFundUpdate();
+});
+document.getElementById("btnFundClear").addEventListener("click",()=>{
+  fundWriteForm({}); document.getElementById("tf-err").textContent=""; document.getElementById("fundResultCard").hidden=true;
+  liveFundUpdate();
+});
+document.getElementById("btnFundSave").addEventListener("click",()=>{
+  const s=document.getElementById("tf-s").value.trim().toUpperCase();
+  const err=document.getElementById("tf-err");
+  if(!s){ err.textContent="Önce hisse kodu yaz."; return; }
+  err.textContent="";
+  const f=fundReadForm();
+  mutate(()=>{ if(!S.fund) S.fund={}; S.fund[s]=f; });
+  fundShowResult(s, fundCompute(f));
+  flag(s+" temel analizi kaydedildi");
+});
+
+/* ---------- Otomatik fiyat çekme ---------- */
+const fetchStatus={};
+function priceMapRender(){
+  const wInput=document.getElementById("workerUrlInput");
+  if(wInput && document.activeElement!==wInput) wInput.value=(S.settings && S.settings.workerUrl) || "";
+  const syms=[...new Set(S.tx.map(x=>x.s))].sort();
+  let h=`<thead><tr><th>Hisse</th><th>Yahoo kodu</th><th>Fiyat</th><th>Durum</th></tr></thead><tbody>`;
+  if(!syms.length) h+=`<tr><td colspan="4" class="empty">Önce portföye hisse ekle.</td></tr>`;
+  for(const s of syms){
+    const code = resolveFetchCode(s);
+    const st = fetchStatus[s];
+    h+=`<tr><td class="sym">${esc(s)}</td>
+      <td><input type="text" class="pmInput" data-sym="${esc(s)}" value="${esc(code)}" style="width:120px"></td>
+      <td class="num">${S.prices[s]!=null?money(S.prices[s]):"—"}</td>
+      <td style="color:${st?(st.ok?'#2ecc71':'#e74c3c'):'var(--tx2)'}">${st?esc(st.txt):"—"}</td></tr>`;
+  }
+  document.getElementById("priceMapTable").innerHTML=h+"</tbody>";
+  document.querySelectorAll(".pmInput").forEach(inp=>{
+    inp.addEventListener("change",()=>{
+      const s=inp.dataset.sym;
+      mutate(()=>{ if(!S.fetchMap) S.fetchMap={}; S.fetchMap[s]=inp.value.trim(); });
+    });
+  });
+}
+// Panel içindeki bazı hisse anahtarları gerçek BIST koduyla birebir aynı değil
+// (ör. "ASELSAN" yazılmış ama borsa kodu ASELS'tir). fetchMap'te elle bir kod
+// girilmemişse önce bu tablo, sonra da eski "kod+.IS" varsayımı denenir.
+const DEFAULT_CODES={ ASELSAN:"ASELS.IS", AKBANK:"AKBNK.IS", GLRK:"GLRMK.IS" };
+function resolveFetchCode(s){
+  const manual=S.fetchMap && S.fetchMap[s];
+  if(manual) return manual;
+  if(DEFAULT_CODES[s]) return DEFAULT_CODES[s];
+  return s+".IS";
+}
+async function fetchWithTimeout(url, ms){
+  const ctrl=new AbortController();
+  const id=setTimeout(()=>ctrl.abort(), ms);
+  try{ return await fetch(url, {signal:ctrl.signal}); }
+  finally{ clearTimeout(id); }
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+function workerBaseUrl(){
+  return (S.settings && S.settings.workerUrl) || "https://panel.mert-akkus27.workers.dev";
+}
+async function fetchPrice(code, attempt){
+  attempt = attempt || 1;
+  const base=workerBaseUrl();
+  if(!base) throw new Error("Worker adresi ayarlanmamış (Ayarlar sekmesinden ekle)");
+  let res;
+  try{
+    res=await fetchWithTimeout(base.replace(/\/$/,"")+"/?symbol="+encodeURIComponent(code), 15000);
+  }catch(e){
+    // Tek seferlik otomatik yeniden deneme: worker'a ilk denemede ulaşılamaması
+    // (soğuk başlama, geçici ağ hatası) çoğunlukla ikinci denemede düzeliyor.
+    if(attempt<2){ await sleep(800); return fetchPrice(code, attempt+1); }
+    throw e.name==="AbortError" ? new Error("zaman aşımı") : new Error("worker'a ulaşılamadı: "+e.message);
+  }
+  let data;
+  try{ data=await res.json(); }
+  catch(e){ throw new Error("worker geçersiz cevap verdi (HTTP "+res.status+")"); }
+  if(!res.ok || data.error) throw new Error(data && data.error ? data.error : ("HTTP "+res.status));
+  if(data.price==null || isNaN(Number(data.price))) throw new Error("fiyat alanı boş döndü");
+  return Number(data.price);
+}
+const FETCH_CONCURRENCY=2; // worker'ı aynı anda bombalamamak için hisseleri 2'şerli grup halinde çek
+async function fetchSymbolList(syms){
+  const status=document.getElementById("fetch-status");
+  status.textContent="Çekiliyor... (0/"+syms.length+")";
+  let ok=0, fail=0, lastErr="", done=0;
+  let idx=0;
+  async function worker(){
+    while(idx<syms.length){
+      const s=syms[idx++];
+      const code=resolveFetchCode(s);
+      try{
+        const p=await fetchPrice(code);
+        S.prices[s]=p;
+        fetchStatus[s]={ok:true,txt:"OK"};
+        ok++;
+      }catch(e){
+        const msg=(e&&e.message?e.message:String(e));
+        fetchStatus[s]={ok:false,txt:"Hata: "+msg};
+        lastErr=msg;
+        fail++;
+      }
+      done++;
+      status.textContent="Çekiliyor... ("+done+"/"+syms.length+")";
+      priceMapRender();
+      await sleep(300); // proxy'lere art arda gitmemek için küçük bekleme
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(FETCH_CONCURRENCY, syms.length)}, worker));
+  save(); render();
+  status.textContent=`Bitti — ${ok} başarılı, ${fail} hata.`+(fail?` (örnek hata: ${lastErr})`:"");
+  const retryBtn=document.getElementById("btnRetryFailed");
+  if(retryBtn) retryBtn.hidden = fail===0;
+}
+document.getElementById("btnFetchPrices").addEventListener("click", ()=>{
+  const syms=[...new Set(S.tx.map(x=>x.s))].sort();
+  fetchSymbolList(syms);
+});
+document.getElementById("btnRetryFailed")?.addEventListener("click", ()=>{
+  const failed=Object.keys(fetchStatus).filter(s=>fetchStatus[s] && !fetchStatus[s].ok);
+  if(!failed.length) return;
+  fetchSymbolList(failed);
+});
+
+/* ---------- Kalıcılık ---------- */
+let saveTimer=null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async ()=>{
+    try{ localStorage.setItem("portfoy-v1", JSON.stringify(S)); }catch(e){}
+    if(!db) return;
+    try{
+      await db.doc("portfoy/durum").set({state:JSON.stringify(S), at:new Date().toISOString()});
+      flag("Kaydedildi");
+    }catch(e){ flag("Kaydedilemedi: "+(e&&e.code?e.code:"hata")); }
+  },400);
+}
+function flag(msg){
+  const el=document.getElementById("saveflag");
+  el.textContent=msg;
+  setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; }, 2500);
+}
+function mutate(fn){ fn(); render(); save(); }
+
+/* ---------- Olaylar ---------- */
+document.getElementById("tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-tab]"); if(!b) return;
+  for(const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t===b));
+  for(const s of document.querySelectorAll("section[id^=tab-]")) s.hidden = s.id!=="tab-"+b.dataset.tab;
+});
+document.addEventListener("change",e=>{
+  const p=e.target.dataset.price, r=e.target.dataset.risk;
+  if(p!==undefined){ mutate(()=>{ S.prices[p]=Number(e.target.value)||0; }); }
+  else if(r!==undefined){ mutate(()=>{ S.riskPct[r]=(Number(e.target.value)||0)/100; }); }
+  else if(e.target.id==="workerUrlInput"){ mutate(()=>{ if(!S.settings) S.settings={}; S.settings.workerUrl=e.target.value.trim(); }); }
+});
+document.getElementById("txf-sym").addEventListener("change",e=>{ txFilter.sym=e.target.value; render(); });
+document.getElementById("txf-type").addEventListener("change",e=>{ txFilter.type=e.target.value; render(); });
+document.getElementById("txf-from").addEventListener("change",e=>{ txFilter.from=e.target.value; render(); });
+document.getElementById("txf-to").addEventListener("change",e=>{ txFilter.to=e.target.value; render(); });
+document.getElementById("btnTxfClear").addEventListener("click",()=>{
+  txFilter={sym:"",type:"",from:"",to:""};
+  for(const id of ["txf-sym","txf-type","txf-from","txf-to"]) document.getElementById(id).value="";
+  render();
+});
+document.addEventListener("click",e=>{
+  const d=e.target.dataset.del, wd=e.target.dataset.wdel;
+  if(d){ if(confirm("Bu işlem silinsin mi?")) mutate(()=>{ S.tx=S.tx.filter(x=>x.id!==d); }); }
+  else if(wd!==undefined && e.target.hasAttribute("data-wdel")){ mutate(()=>{ S.watch.splice(Number(wd),1); }); }
+});
+document.getElementById("btnAdd").addEventListener("click",()=>{
+  const g=id=>document.getElementById(id).value.trim();
+  const err=document.getElementById("f-err");
+  const d=g("f-d"), s=g("f-s").toUpperCase(), t=g("f-t"), lot=Number(g("f-lot")), px=Number(g("f-px")), com=Number(g("f-com")||0);
+  if(!d||!s||!(lot>0)||!(px>0)){ err.textContent="Tarih, hisse, lot ve fiyat gerekli."; return; }
+  err.textContent="";
+  mutate(()=>{
+    S.tx.push({id:"t"+Date.now()+Math.random().toString(36).slice(2,6), d, s, t, lot, px, com, note:g("f-note")});
+    if(t!=="SAT" && !S.prices[s]) S.prices[s]=px;
+    if(S.riskPct[s]===undefined) S.riskPct[s]=0.15;
+  });
+  for(const id of ["f-lot","f-px","f-note"]) document.getElementById(id).value="";
+  document.getElementById("f-com").value="0";
+  flag(s+" "+t+" kaydedildi");
+});
+document.getElementById("btnW").addEventListener("click",()=>{
+  const s=document.getElementById("w-s").value.trim().toUpperCase(); if(!s) return;
+  mutate(()=>{ S.watch.push({s, status:document.getElementById("w-st").value, target:Number(document.getElementById("w-t").value)||null, note:document.getElementById("w-n").value.trim()}); });
+  document.getElementById("w-s").value=""; document.getElementById("w-t").value=""; document.getElementById("w-n").value="";
+});
+document.getElementById("btnSaveSet").addEventListener("click",()=>{
+  mutate(()=>{
+    S.settings={
+      ...S.settings,
+      capital:Number(document.getElementById("s-cap").value)||0,
+      riskTol:(Number(document.getElementById("s-tol").value)||0)/100,
+      maxWeight:(Number(document.getElementById("s-w").value)||0)/100,
+      stopPct:(Number(document.getElementById("s-stop").value)||0)/100,
+      maxSteps:Number(document.getElementById("s-steps").value)||0,
+      costMethod:document.getElementById("s-costMethod").value
+    };
+  });
+  flag("Ayarlar kaydedildi");
+});
+document.getElementById("btnReset").addEventListener("click",()=>{
+  if(confirm("Panel, Excel'den gelen ilk haline dönecek. Sonradan girdiğin işlemler silinir. Devam?"))
+    mutate(()=>{ S=clone(SEED); });
+});
+
+/* ---------- CSV ---------- */
+function csv(rows){ return "\uFEFF"+rows.map(r=>r.map(v=>{
+  const s=String(v==null?"":v);
+  return /[";\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}).join(";")).join("\r\n"); }
+async function offer(name, text){
+  if(!downloads){ flag("İndirme bu görünümde kapalı"); return; }
+  try{ await downloads.save({filename:name, data:text}); }
+  catch(e){ if(e&&e.code!=="cancelled") flag("İndirilemedi"); }
+}
+function portCsv(){
+  const {open,T}=compute();
+  const rows=[["Hisse","Lot","Ort. maliyet","Maliyet","Guncel fiyat","Deger","Gerceklesmemis K/Z","K/Z %","Gerceklesmis K/Z","Agirlik %"]];
+  for(const r of open) rows.push([r.s,r.lot,r.avg.toFixed(4),r.cost.toFixed(2),r.price,r.value.toFixed(2),r.unreal.toFixed(2),(r.unrealPct*100).toFixed(2),r.realized.toFixed(2),(r.weight*100).toFixed(2)]);
+  rows.push(["TOPLAM",T.lot,"",T.cost.toFixed(2),"",T.value.toFixed(2),T.unreal.toFixed(2),"",T.realized.toFixed(2),"100"]);
+  return csv(rows);
+}
+function txCsv(){
+  const rows=[["Tarih","Hisse","Islem","Lot","Fiyat","Komisyon","Net tutar","Not"]];
+  for(const x of S.tx.slice().sort((a,b)=>(a.d<b.d?-1:1))){
+    const g=x.lot*x.px, net=x.t==="SAT"?g-(x.com||0):g+(x.com||0);
+    rows.push([x.d,x.s,x.t,x.lot,x.px,x.com||0,net.toFixed(2),x.note||""]);
+  }
+  return csv(rows);
+}
+document.getElementById("btnCsvP").addEventListener("click",()=>offer("portfoy.csv",portCsv()));
+document.getElementById("btnCsvT").addEventListener("click",()=>offer("islem-kaydi.csv",txCsv()));
+document.getElementById("btnCsvT2").addEventListener("click",()=>offer("islem-kaydi.csv",txCsv()));
+
+/* ---------- Başlat ---------- */
+(function init(){
+  document.getElementById("f-d").value=new Date().toISOString().slice(0,10);
+  try{
+    const l=localStorage.getItem("portfoy-v1");
+    if(l) S=Object.assign(clone(SEED), JSON.parse(l));
+  }catch(e){}
+  render();
+})();
+
+(async ()=>{
+  try{ downloads = await window.claude?.use?.("downloads") || null; }catch(e){ downloads=null; }
+  if(!downloads) for(const id of ["btnCsvP","btnCsvT","btnCsvT2"]) document.getElementById(id).hidden=true;
+})();
+
+(async ()=>{
+  try{ db = await window.claude?.use?.("db") || null; }catch(e){ db=null; }
+  if(!db){ flag("Bu görünümde yerel kayıt kullanılıyor"); return; }
+  try{
+    const snap = await db.doc("portfoy/durum").get();
+    if(snap.exists && snap.data() && snap.data().state){
+      S = Object.assign(clone(SEED), JSON.parse(snap.data().state));
+      render();
+    } else {
+      await db.doc("portfoy/durum").set({state:JSON.stringify(S), at:new Date().toISOString()});
+    }
+    ready=true;
+  }catch(e){ flag("Kayıtlı veri okunamadı, yerel kopya kullanılıyor"); }
+})();
+</script>
+</body>
+</html>
