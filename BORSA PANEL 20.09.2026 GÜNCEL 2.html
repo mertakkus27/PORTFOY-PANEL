@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hisse Takip Paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDEFF2; --panel:#FFFFFF; --panel2:#F6F7F9; --line:#D6DBE1; --line2:#E6EAEE;
+  --tx:#141A21; --tx2:#5C6874; --tx3:#8B95A0;
+  --up:#1E7D57; --down:#C0392B; --accent:#9A5B12; --accentbg:#F5E7D2;
+  --shadow:0 1px 2px rgba(20,26,33,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1318; --panel:#171C23; --panel2:#1D232B; --line:#2B333D; --line2:#232A33;
+    --tx:#E4E8EC; --tx2:#96A1AD; --tx3:#6F7B87;
+    --up:#46B489; --down:#E06A5A; --accent:#E0A33E; --accentbg:#2A2416;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1318; --panel:#171C23; --panel2:#1D232B; --line:#2B333D; --line2:#232A33;
+  --tx:#E4E8EC; --tx2:#96A1AD; --tx3:#6F7B87;
+  --up:#46B489; --down:#E06A5A; --accent:#E0A33E; --accentbg:#2A2416;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.num{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px; margin:0 auto; padding:20px 16px 72px}
+h1{font-size:19px; font-weight:600; margin:0; letter-spacing:-.01em}
+.sub{color:var(--tx2); font-size:13px; margin-top:2px}
+header.top{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px}
+.saveflag{font-size:12px; color:var(--tx3); min-height:18px}
+
+/* Ledger strip */
+.ledger{background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow);
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); overflow:hidden}
+.cell{padding:14px 16px; border-right:1px solid var(--line2)}
+.cell:last-child{border-right:none}
+.cell .k{font-size:12px; color:var(--tx2)}
+.cell .v{font-size:22px; font-weight:500; margin-top:3px; letter-spacing:-.02em}
+.cell .s{font-size:12px; color:var(--tx3); margin-top:2px}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* Tabs */
+nav.tabs{display:flex; gap:2px; margin:22px 0 14px; border-bottom:1px solid var(--line); overflow-x:auto}
+nav.tabs button{
+  background:none; border:none; border-bottom:2px solid transparent; color:var(--tx2);
+  font:inherit; font-size:14px; padding:9px 13px; cursor:pointer; white-space:nowrap; border-radius:4px 4px 0 0;
+}
+nav.tabs button:hover{color:var(--tx); background:var(--panel2)}
+nav.tabs button[aria-selected="true"]{color:var(--tx); border-bottom-color:var(--accent); font-weight:500}
+nav.tabs button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+section[hidden]{display:none}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); overflow:hidden}
+.card + .card{margin-top:16px}
+.card h2{font-size:14px; font-weight:600; margin:0; padding:13px 16px; border-bottom:1px solid var(--line2)}
+.card h2 span{font-weight:400; color:var(--tx2); font-size:13px; margin-left:6px}
+.pad{padding:16px}
+
+/* Tables */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:14px}
+th{font-size:12px; font-weight:500; color:var(--tx2); text-align:right; padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap; background:var(--panel2)}
+th:first-child, td:first-child{text-align:left}
+td{padding:9px 12px; border-bottom:1px solid var(--line2); text-align:right; white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tr.total td{border-top:1px solid var(--line); background:var(--panel2); font-weight:500}
+.sym{font-weight:600; letter-spacing:.01em}
+.tag{display:inline-block; font-size:11px; padding:2px 7px; border-radius:20px; border:1px solid var(--line)}
+.tag.ok{color:var(--tx2)}
+.tag.warn{color:var(--accent); border-color:var(--accent); background:var(--accentbg)}
+.tag.bad{color:var(--down); border-color:var(--down)}
+.tag.al{color:var(--up); border-color:var(--up)}
+.tag.sat{color:var(--down); border-color:var(--down)}
+.tag.ac{color:var(--tx2)}
+
+/* Inputs */
+input,select,textarea,button{font:inherit; color:var(--tx)}
+input,select{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:7px 9px; width:100%}
+input:focus,select:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+input.px{width:92px; text-align:right; padding:4px 7px; background:var(--panel2)}
+input.rp{width:70px; text-align:right; padding:4px 7px; background:var(--panel2)}
+label{display:block; font-size:12px; color:var(--tx2); margin-bottom:4px}
+.grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.btn{background:var(--tx); color:var(--panel); border:1px solid var(--tx); border-radius:6px; padding:8px 16px; cursor:pointer; font-weight:500}
+.btn:hover{opacity:.88}
+.btn.ghost{background:none; color:var(--tx2); border-color:var(--line); font-weight:400}
+.btn.ghost:hover{color:var(--tx); border-color:var(--tx2); opacity:1}
+.btn.mini{padding:3px 9px; font-size:12px; border-radius:5px}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.row-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:14px 16px; border-top:1px solid var(--line2)}
+.note{font-size:12px; color:var(--tx3); padding:0 16px 14px}
+.liveresult{background:var(--panel2); border:1px solid var(--line2); border-radius:6px; padding:9px 11px; margin-top:12px; font-size:13px; line-height:1.7}
+.liveresult b{font-family:"IBM Plex Mono",monospace}
+.empty{padding:28px 16px; text-align:center; color:var(--tx2); font-size:14px}
+.err{color:var(--down); font-size:13px}
+.gate{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:16px}
+.gate[hidden]{display:none}
+.gate .card{width:100%; max-width:360px}
+.syncdot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--tx3); margin-right:6px}
+.syncdot.ok{background:var(--up)} .syncdot.bad{background:var(--down)} .syncdot.busy{background:var(--accent)}
+.okmsg{color:var(--up); font-size:13px}
+.sbinfo{font-size:13px; color:var(--tx2); line-height:1.7}
+.tag.iyi{color:var(--up); border-color:var(--up)}
+.tag.orta{color:var(--accent); border-color:var(--accent); background:var(--accentbg)}
+.tag.kotu{color:var(--down); border-color:var(--down)}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.seg button{background:none; border:none; padding:7px 16px; cursor:pointer; color:var(--tx2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--panel2); color:var(--tx); font-weight:500}
+details.fx{border-top:1px solid var(--line2)}
+details.fx:first-of-type{border-top:none}
+details.fx summary{padding:12px 16px; cursor:pointer; list-style:none; position:relative; padding-right:34px}
+details.fx summary::-webkit-details-marker{display:none}
+details.fx summary::after{content:"+"; position:absolute; right:16px; top:11px; color:var(--tx3); font-size:18px; line-height:1}
+details.fx[open] summary::after{content:"−"}
+details.fx summary:hover{background:var(--panel2)}
+.fx-k{display:block; color:var(--tx2); font-size:13px; font-weight:400; margin-top:2px}
+.fx-body{padding:0 16px 16px; font-size:14px; line-height:1.6}
+.fx-h{font-size:12px; color:var(--tx2); font-weight:500; margin:14px 0 4px}
+.fx-formula{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:13px; background:var(--panel2); border:1px solid var(--line2); border-radius:6px; padding:9px 11px; overflow-wrap:anywhere}
+.fx-warn{color:var(--tx2); border-left:2px solid var(--accent); padding-left:10px}
+.bands{display:grid; gap:4px}
+.band{display:grid; grid-template-columns:auto 1fr; gap:2px 10px; align-items:baseline; padding:7px 9px; border-radius:6px; border:1px solid transparent}
+.band.on{background:var(--panel2); border-color:var(--line)}
+.band .tag{min-width:82px; text-align:center}
+.band-r{font-size:13px}
+.band-t{grid-column:2; color:var(--tx2); font-size:13px}
+.fx-res{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:6px}
+.fx-big{font-size:26px; font-weight:500; letter-spacing:-.02em}
+.fx-steps{color:var(--tx2); font-size:13px; margin-bottom:6px; overflow-wrap:anywhere}
+#fx-calc .liveresult{font-size:14px}
+@media (max-width:640px){
+  .wrap{padding:14px 10px 64px}
+  .cell .v{font-size:19px}
+  td,th{padding:8px 9px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <div class="card">
+    <h2>Hisse Takip Paneli <span id="gate-sub">giriş</span></h2>
+    <form id="loginForm" class="pad">
+      <div style="margin-bottom:12px"><label for="lg-email">E-posta</label><input id="lg-email" type="email" autocomplete="username" inputmode="email" required></div>
+      <div style="margin-bottom:12px"><label for="lg-pass">Şifre</label><input id="lg-pass" type="password" autocomplete="current-password" minlength="6" required></div>
+      <div id="lg-code-wrap" style="margin-bottom:12px" hidden><label for="lg-code">Davet kodu</label><input id="lg-code" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+      <button class="btn" id="btnLogin" type="submit" style="width:100%">Giriş yap</button>
+      <div class="err" id="lg-err" style="margin-top:10px"></div>
+      <div class="okmsg" id="lg-ok" style="margin-top:10px"></div>
+    </form>
+    <div class="row-actions">
+      <button class="btn ghost mini" id="lg-toggle" type="button">Davet kodum var, kayıt ol</button>
+    </div>
+    <div class="note" style="padding-top:10px">Giriş bu cihazda hatırlanır, her açışta tekrar sormaz. Her kullanıcı sadece kendi verisini görür.</div>
+  </div>
+</div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Hisse Takip Paneli</h1>
+      <div class="sub">İşlemleri gir, ortalama maliyet ve K/Z kendiliğinden hesaplansın.</div>
+    </div>
+    <div style="text-align:right">
+      <div class="saveflag" id="syncstate"></div>
+      <div class="saveflag" id="saveflag"></div>
+    </div>
+  </header>
+
+  <div class="ledger" id="ledger"></div>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="portfoy" aria-selected="true">Portföy</button>
+    <button role="tab" data-tab="islem" aria-selected="false">İşlem ekle</button>
+    <button role="tab" data-tab="kayit" aria-selected="false">İşlem kaydı</button>
+    <button role="tab" data-tab="risk" aria-selected="false">Risk</button>
+    <button role="tab" data-tab="izleme" aria-selected="false">İzleme</button>
+    <button role="tab" data-tab="temel" aria-selected="false">Temel Analiz</button>
+    <button role="tab" data-tab="formul" aria-selected="false">Formül Rehberi</button>
+    <button role="tab" data-tab="ayar" aria-selected="false">Ayarlar</button>
+  </nav>
+
+  <section id="tab-portfoy">
+    <div class="card">
+      <h2>Otomatik fiyat çekme <span>kendi Cloudflare Worker'ın üzerinden, Yahoo Finance verisiyle</span></h2>
+      <div class="pad">
+        <div class="note" style="padding:0 0 10px">
+          Her hisse için gerçek BIST kodunu yaz, sonuna ".IS" ekleyerek (Yahoo formatı). Örn. şirket adın "ASELSAN" ise gerçek kodu "ASELS.IS", "AKBANK" ise "AKBNK.IS" olabilir.
+        </div>
+        <label for="workerUrlInput">Worker adresi</label>
+        <input type="text" id="workerUrlInput" placeholder="https://panel.senin-adin.workers.dev" style="margin-bottom:10px">
+        <div class="scroll"><table id="priceMapTable"></table></div>
+        <div class="row-actions" style="margin-top:12px">
+          <button class="btn" id="btnFetchPrices">Fiyatları şimdi çek</button>
+          <button class="btn ghost mini" id="btnRetryFailed" hidden>Sadece hatalıları yeniden dene</button>
+          <span class="err" id="fetch-status"></span>
+        </div>
+        <div class="note" style="padding-top:10px">
+          Fiyat, senin kendi Cloudflare Worker'ının Yahoo Finance'ten çektiği tek ve net kaynaktan geliyor (tahmine dayalı alan arama yok). Hisseler worker'ı yormamak için 2'şerli gruplar halinde çekilir. Hâlâ hata alırsan "Durum" sütunundaki tam mesajı paylaş.
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Açık pozisyonlar <span>güncel fiyat hücrelerini doğrudan değiştirebilirsin</span></h2>
+      <div class="scroll"><table id="ptable"></table></div>
+      <div class="row-actions">
+        <button class="btn ghost mini" id="btnCsvP">Portföyü CSV indir</button>
+        <button class="btn ghost mini" id="btnCsvT">İşlem kaydını CSV indir</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Kapanan pozisyonlar</h2>
+      <div class="scroll"><table id="ctable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-islem" hidden>
+    <div class="card">
+      <h2>Yeni işlem</h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="f-d">Tarih</label><input type="date" id="f-d"></div>
+          <div><label for="f-s">Hisse</label><input id="f-s" list="symlist" placeholder="GARAN" autocapitalize="characters"><datalist id="symlist"></datalist></div>
+          <div><label for="f-t">İşlem</label><select id="f-t"><option>AL</option><option>SAT</option><option>ACILIS</option></select></div>
+          <div><label for="f-lot">Lot</label><input type="number" id="f-lot" min="0" step="any" inputmode="decimal"></div>
+          <div><label for="f-px">Fiyat (TL)</label><input type="number" id="f-px" min="0" step="any" inputmode="decimal"></div>
+          <div><label for="f-com">Komisyon (TL)</label><input type="number" id="f-com" min="0" step="any" value="0" inputmode="decimal"></div>
+          <div style="grid-column:1/-1"><label for="f-note">Not</label><input id="f-note" placeholder="İsteğe bağlı"></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap">
+          <button class="btn" id="btnAdd">İşlemi kaydet</button>
+          <span class="err" id="f-err"></span>
+        </div>
+      </div>
+      <div class="note">ACILIS, tabloya devir olarak girilen başlangıç bakiyesidir; maliyeti alım gibi işler ama yeni bir alım kademesi saymaz.</div>
+    </div>
+  </section>
+
+  <section id="tab-kayit" hidden>
+    <div class="card">
+      <h2>Tüm hareketler <span id="txcount"></span></h2>
+      <div class="row-actions" style="margin-bottom:12px">
+        <select id="txf-sym" style="max-width:150px"><option value="">Tüm hisseler</option></select>
+        <select id="txf-type" style="max-width:150px">
+          <option value="">Tüm işlemler</option>
+          <option value="AL">Sadece AL</option>
+          <option value="SAT">Sadece SAT</option>
+          <option value="ACILIS">Sadece ACILIS</option>
+        </select>
+        <input type="date" id="txf-from" title="Başlangıç tarihi" style="max-width:150px">
+        <input type="date" id="txf-to" title="Bitiş tarihi" style="max-width:150px">
+        <button class="btn ghost mini" id="btnTxfClear">Filtreyi temizle</button>
+      </div>
+      <div class="scroll"><table id="ttable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-risk" hidden>
+    <div class="card">
+      <h2>Risk bütçesi</h2>
+      <div class="scroll"><table id="rtable"></table></div>
+      <div class="note">İzin verilen zarar % hücresini hisse başına sen belirlersin. Risk payı = maliyet × izin verilen zarar.</div>
+    </div>
+    <div class="card">
+      <h2>Kural kontrolü</h2>
+      <div class="scroll"><table id="ktable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-izleme" hidden>
+    <div class="card">
+      <h2>İzleme listesi</h2>
+      <div class="scroll"><table id="wtable"></table></div>
+      <div class="row-actions">
+        <input id="w-s" placeholder="Hisse" style="max-width:120px">
+        <select id="w-st" style="max-width:150px"><option>Ucuz</option><option>Pahalı</option><option>İzlemede</option><option>Vazgeçildi</option></select>
+        <input id="w-t" type="number" step="any" placeholder="Hedef fiyat" style="max-width:130px">
+        <input id="w-n" placeholder="Not" style="max-width:260px">
+        <button class="btn mini" id="btnW">Ekle</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-temel" hidden>
+    <div class="card">
+      <h2>Şirket seç <span>portföyle sınırlı değilsin — herhangi bir hisseyi yazıp analiz edebilirsin</span></h2>
+      <div class="pad">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,220px))">
+          <div><label for="tf-s">Hisse</label><input id="tf-s" list="fundsymlist" placeholder="Örn. THYAO, EREGL..." autocapitalize="characters"></div>
+        </div>
+        <div class="row-actions" style="padding:12px 0 0">
+          <button class="btn ghost mini" id="btnFundLoad">Kayıtlı rakamları getir</button>
+          <button class="btn ghost mini" id="btnFundClear">Formu temizle</button>
+        </div>
+        <div class="note" style="padding:8px 0 0">Portföyünde olsun olmasın, istediğin şirketin kodunu yazıp rakamlarını girebilirsin; kaydettiklerin aşağıdaki listede kalıcı olarak tutulur. Formüllerin ne anlama geldiğini ve kaç olursa iyi/kötü sayıldığını <b>Formül Rehberi</b> sekmesinde bulabilirsin.</div>
+      </div>
+      <datalist id="fundsymlist"></datalist>
+    </div>
+
+    <div class="card" id="xlCard">
+      <h2>Temel analiz <span>tek form — Excel'deki tüm oranlar + panelin içsel değer, kur riski ve reel faiz karşılaştırması</span></h2>
+      <div class="pad">
+        <div class="row-actions" style="padding:0 0 12px; border-top:none">
+          <button class="btn" id="btnFundSave" type="button">Hesapla ve kaydet</button>
+          <button class="btn ghost mini" id="xlSample" type="button">Excel'deki rakamları getir</button>
+          <button class="btn ghost mini" id="xlClear" type="button">Formu temizle</button>
+          <span class="err" id="tf-err"></span>
+        </div>
+        <div class="grid" id="xlIn" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))"></div>
+        <div class="note" style="padding:10px 0 0">Her rakamı bir kez gir; tüm oranlar aşağıda anında hesaplanır. Yüzde girdilerini % olarak yaz (ör. 37). Para birimini her kutuda aynı tut. Ortalama bilanço isteyen oranlar (ROA, ROE, DSO, DIO, DPO, devir hızları) için dönem başı rakamları da gir. F/K ve PD/DD boş bırakılırsa fiyat × hisse sayısından hesaplanır. Eşikler genel başlangıç referansıdır; sektörle doğrula.</div>
+        <div id="xlWarn" style="margin-top:14px"></div>
+        <div id="xlPri" style="margin-top:14px"></div>
+        <div class="scroll" style="margin-top:14px"><table id="xlTable"></table></div>
+      </div>
+    </div>
+
+    <div class="card" id="trCard">
+      <h2>Yıllık trend <span>4–5 yılın rakamını gir; ROE, marj, CFO/Net Kâr, borç ve işletme sermayesi trendi otomatik çıkar</span></h2>
+      <div class="pad">
+        <div class="note" style="padding:0 0 10px">Her yılı bir kez gir (yıllık, dönem sonu bakiyeleri). Dönem başı bakiyelerini panel önceki yılın dönem sonundan alır; bu yüzden ROE, ROA, DSO gibi ortalama isteyen oranlar ilk yıl için, Piotroski üçüncü yıldan itibaren hesaplanır. Yıl başlıklarını değiştirebilirsin. "Hesapla ve kaydet" trendi de hisseye kaydeder. Fiyat çarpanları (F/K, PD/DD) ve WACC yalnızca güncel dönem için hesaplanır.</div>
+        <div class="scroll"><table id="trIn"></table></div>
+        <div class="scroll" style="margin-top:14px" id="trOut"></div>
+      </div>
+    </div>
+
+    <div class="card" id="fundResultCard" hidden>
+      <h2>Sonuç <span id="fundResultSym"></span></h2>
+      <div class="scroll"><table id="fundResultTable"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Tüm hisseler özet</h2>
+      <div class="scroll"><table id="fundSummaryTable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-formul" hidden>
+    <div class="card">
+      <div class="pad" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between">
+        <div class="seg" role="group" aria-label="Görünüm">
+          <button type="button" id="fx-mode-rehber" aria-pressed="true">Rehber</button>
+          <button type="button" id="fx-mode-hesap" aria-pressed="false">Hesaplayıcı</button>
+        </div>
+        <div id="fx-search-wrap" style="flex:1; min-width:200px; max-width:300px">
+          <input id="fx-search" type="search" placeholder="Formül ara (ör. ROE, borç, F/K)" autocomplete="off">
+        </div>
+      </div>
+      <div class="note">Bu sayfa bilgilendirme amaçlıdır, yatırım tavsiyesi değildir. Aralıklar genel kabul gören pratik kurallardır; sektöre, döneme ve şirketin iş modeline göre değişir. Türkiye'de yüksek enflasyon ve enflasyon muhasebesi (TMS 29) oranların dönemler arası kıyasını bozabilir. En sağlıklısı bir şirketi kendi sektörüyle ve kendi geçmişiyle karşılaştırmaktır. Formüllerin her birini açıp inceleyebilir, "Bunu hesapla" ile kendi rakamlarınla deneyebilirsin.</div>
+    </div>
+    <div id="fx-guide" style="margin-top:16px"></div>
+    <div id="fx-calc" hidden style="margin-top:16px">
+      <div class="card">
+        <h2>Formül hesaplayıcı <span>rakamları gir, sonuç ve yorum anında çıksın · hiçbir şey kaydedilmez</span></h2>
+        <div class="pad">
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+            <div><label for="fx-sel">Formül</label><select id="fx-sel"></select></div>
+            <div><label for="fx-sym">Kayıtlı hisseden doldur</label><select id="fx-sym"><option value="">— seç —</option></select></div>
+          </div>
+          <div class="fx-h">Formül</div>
+          <div class="fx-formula" id="fx-formula"></div>
+          <div class="grid" id="fx-inputs" style="margin-top:14px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"></div>
+          <div class="liveresult" id="fx-result">Rakamları girince sonuç burada görünür.</div>
+          <div class="fx-h">Kaç olursa iyi, kaç olursa kötü?</div>
+          <div id="fx-bands"></div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn ghost mini" id="fx-clear">Kutuları temizle</button>
+          <button type="button" class="btn ghost mini" id="fx-toguide">Bu formülün açıklamasına git</button>
+        </div>
+        <div class="note">"Kayıtlı hisseden doldur", Temel Analiz sekmesinde kaydettiğin rakamları getirir. Buradaki değişiklikler o kayda yazılmaz, denemeler için serbestçe oynayabilirsin.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-ayar" hidden>
+    <div class="card">
+      <h2>Parametreler</h2>
+      <div class="pad">
+        <div class="grid">
+          <div><label for="s-cap">Başlangıç sermayesi (TL)</label><input type="number" id="s-cap" step="any"></div>
+          <div><label for="s-tol">Portföy risk toleransı (%)</label><input type="number" id="s-tol" step="any"></div>
+          <div><label for="s-w">Tek hissede maks. ağırlık (%)</label><input type="number" id="s-w" step="any"></div>
+          <div><label for="s-stop">Zarar-kes eşiği (%)</label><input type="number" id="s-stop" step="any"></div>
+          <div><label for="s-steps">Hisse başına maks. alım kademesi</label><input type="number" id="s-steps" step="1"></div>
+          <div><label for="s-costMethod">Maliyet hesaplama yöntemi</label><select id="s-costMethod">
+            <option value="agirlikli">Ağırlıklı ortalama (satışta ortalama değişmez)</option>
+            <option value="fifo">İlk giren ilk çıkar (FIFO)</option>
+            <option value="lifo">Son giren ilk çıkar (LIFO)</option>
+          </select></div>
+        </div>
+        <div class="note" style="padding:10px 0 0">
+          Bankan satış sonrası ortalama maliyeti değiştiriyorsa (yükseltiyor/düşürüyorsa), bankanın hesap özetindeki rakamla eşleşen yöntemi seç. Yöntemi değiştirdiğinde geçmiş tüm işlemler o yönteme göre yeniden hesaplanır.
+        </div>
+        <div style="margin-top:14px"><button class="btn" id="btnSaveSet">Kaydet</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Veri</h2>
+      <div class="pad" style="color:var(--tx2); font-size:13px">
+        Panel açtığın her seferde son halini geri yükler. Tabloyu Excel'e geri taşımak istersen portföy ve işlem kaydını CSV olarak indirebilirsin.
+      </div>
+      <div class="row-actions">
+        <button class="btn ghost mini" id="btnCsvT2">İşlem kaydını CSV indir</button>
+        <button class="btn ghost mini" id="btnJsonOut">Yedek indir (JSON)</button>
+        <button class="btn ghost mini" id="btnJsonIn">Yedekten yükle (JSON)</button>
+        <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+        <button class="btn ghost mini" id="btnReset">Paneli sıfırla (boş)</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Bulut senkron <span>Supabase · telefon ve bilgisayar aynı veriyi görür</span></h2>
+      <div class="pad">
+        <div class="sbinfo" id="sb-info"></div>
+        <div class="row-actions" style="padding:12px 0 0; border-top:none">
+          <button class="btn ghost mini" id="btnSbPull">Buluttan yenile</button>
+          <button class="btn ghost mini" id="btnSbPush">Bu cihazdaki veriyi buluta yaz</button>
+          <button class="btn ghost mini" id="btnSbOut">Çıkış yap</button>
+        </div>
+      </div>
+      <div class="note">Her değişiklik otomatik buluta kaydedilir ve açık olan diğer cihazlara anında yansır. İnternet yokken yapılan değişiklikler cihazda bekler, bağlantı gelince buluta gönderilir.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+// Yeni kullanıcı boş bir panelle başlar. Kişisel veriler dosyada değil, her kullanıcının kendi bulut satırında durur.
+const SEED = {
+  tx: [],
+  prices:{},
+  fetchMap:{},
+  riskPct:{},
+  settings:{capital:100000, riskTol:.5, maxWeight:.2, stopPct:-.15, maxSteps:4, costMethod:"agirlikli", workerUrl:"https://panel.mert-akkus27.workers.dev"},
+  watch:[],
+  fund:{}
+};
+
+let S = clone(SEED);
+let txFilter = {sym:"", type:"", from:"", to:""};
+let downloads = null;
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+const nf = (d=2)=>new Intl.NumberFormat("tr-TR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const money=v=>nf(2).format(v||0);
+const lotf=v=>nf(Number.isInteger(v)?0:2).format(v||0);
+const pct=v=>nf(1).format((v||0)*100)+"%";
+const sign=v=>(v>0?"up":v<0?"down":"");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Hesaplama: banka mantığı, ağırlıklı ortalama maliyet ---------- */
+function compute(){
+  const method = S.settings.costMethod || "agirlikli";
+  const rows = {}, order = [];
+  const tx = S.tx.slice().sort((a,b)=>(a.d<b.d?-1:a.d>b.d?1:0));
+  for(const t of tx){
+    const s=t.s; if(!s) continue;
+    if(!rows[s]){ rows[s]={s, lot:0, cost:0, avg:0, realized:0, soldCost:0, buys:0, bought:0, sold:0, lots:[]}; order.push(s); }
+    const r=rows[s];
+    const gross=(t.lot||0)*(t.px||0), com=t.com||0;
+    if(t.t==="AL"||t.t==="ACILIS"){
+      r.lot+=t.lot; r.cost+=gross+com; r.bought+=t.lot;
+      if(t.t==="AL") r.buys++;
+      r.avg = r.lot>0 ? r.cost/r.lot : 0;
+      if(method!=="agirlikli") r.lots.push({qty:t.lot, unit:(gross+com)/(t.lot||1)});
+    } else if(t.t==="SAT"){
+      let basis;
+      if(method==="agirlikli"){
+        basis=(t.lot||0)*r.avg;
+      } else {
+        let remaining=t.lot||0; basis=0;
+        while(remaining>0.0000001 && r.lots.length){
+          const idx = method==="lifo" ? r.lots.length-1 : 0;
+          const lot=r.lots[idx];
+          const take=Math.min(lot.qty, remaining);
+          basis += take*lot.unit;
+          lot.qty -= take; remaining -= take;
+          if(lot.qty<=0.0000001) r.lots.splice(idx,1);
+        }
+      }
+      r.realized += (gross-com) - basis;
+      r.soldCost += basis;
+      r.lot-=t.lot; r.cost-=basis; r.sold+=t.lot;
+      if(r.lot<=0.0000001){ r.lot=0; r.cost=0; r.lots=[]; }
+      r.avg = r.lot>0 ? r.cost/r.lot : r.avg;
+    }
+  }
+  const open=[], closed=[];
+  for(const s of order){
+    const r=rows[s];
+    r.price = Number(S.prices[s]) || 0;
+    r.value = r.lot*r.price;
+    r.unreal = r.value-r.cost;
+    r.unrealPct = r.cost>0 ? r.unreal/r.cost : 0;
+    r.realPct = r.soldCost>0 ? r.realized/r.soldCost : 0;
+    r.total = r.realized+r.unreal;
+    (r.lot>0?open:closed).push(r);
+  }
+  open.sort((a,b)=>b.value-a.value);
+  const T={cost:0,value:0,unreal:0,realized:0,lot:0};
+  for(const r of open){ T.cost+=r.cost; T.value+=r.value; T.unreal+=r.unreal; T.lot+=r.lot; }
+  for(const r of open.concat(closed)) T.realized+=r.realized;
+  T.total=T.unreal+T.realized;
+  T.cash=(S.settings.capital||0)-T.cost+T.realized;
+  T.retPct=S.settings.capital>0 ? T.total/S.settings.capital : 0;
+  for(const r of open) r.weight = T.cost>0 ? r.cost/T.cost : 0;
+  return {open, closed, T};
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const {open, closed, T}=compute();
+  // ledger
+  document.getElementById("ledger").innerHTML = [
+    ["Açık pozisyon maliyeti", money(T.cost)+" ₺", lotf(T.lot)+" lot · "+open.length+" hisse",""],
+    ["Güncel değer", money(T.value)+" ₺","",""],
+    ["Gerçekleşmemiş K/Z", (T.unreal>=0?"+":"")+money(T.unreal)+" ₺", T.cost>0?pct(T.unreal/T.cost):"", sign(T.unreal)],
+    ["Gerçekleşmiş K/Z", (T.realized>=0?"+":"")+money(T.realized)+" ₺","", sign(T.realized)],
+    ["Toplam K/Z", (T.total>=0?"+":"")+money(T.total)+" ₺", "sermayeye göre "+pct(T.retPct), sign(T.total)],
+    ["Nakit bakiye", money(T.cash)+" ₺", "sermaye "+money(S.settings.capital)+" ₺",""]
+  ].map(c=>`<div class="cell"><div class="k">${c[0]}</div><div class="v num ${c[3]}">${c[1]}</div><div class="s num">${c[2]}</div></div>`).join("");
+
+  // portföy
+  const ph=["Hisse","Lot","Ort. maliyet","Maliyet","Güncel fiyat","Değer","Gerç.memiş K/Z","%","Gerç. K/Z","Ağırlık"];
+  let h=`<thead><tr>${ph.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>`;
+  if(!open.length) h+=`<tr><td colspan="10" class="empty">Açık pozisyon yok. “İşlem ekle” sekmesinden ilk alımı gir.</td></tr>`;
+  for(const r of open){
+    h+=`<tr>
+      <td class="sym">${esc(r.s)}</td>
+      <td class="num">${lotf(r.lot)}</td>
+      <td class="num">${money(r.avg)}</td>
+      <td class="num">${money(r.cost)}</td>
+      <td><input class="px num" type="number" step="any" min="0" value="${r.price}" data-price="${esc(r.s)}" aria-label="${esc(r.s)} güncel fiyat"></td>
+      <td class="num">${money(r.value)}</td>
+      <td class="num ${sign(r.unreal)}">${(r.unreal>=0?"+":"")+money(r.unreal)}</td>
+      <td class="num ${sign(r.unreal)}">${pct(r.unrealPct)}</td>
+      <td class="num ${sign(r.realized)}">${r.realized?((r.realized>0?"+":"")+money(r.realized)):"—"}</td>
+      <td class="num">${pct(r.weight)}</td></tr>`;
+  }
+  if(open.length) h+=`<tr class="total"><td>Toplam</td><td class="num">${lotf(T.lot)}</td><td></td><td class="num">${money(T.cost)}</td><td></td><td class="num">${money(T.value)}</td><td class="num ${sign(T.unreal)}">${(T.unreal>=0?"+":"")+money(T.unreal)}</td><td class="num ${sign(T.unreal)}">${T.cost>0?pct(T.unreal/T.cost):""}</td><td class="num ${sign(T.realized)}">${(T.realized>=0?"+":"")+money(T.realized)}</td><td class="num">100,0%</td></tr>`;
+  document.getElementById("ptable").innerHTML=h+"</tbody>";
+
+  // kapananlar
+  let c=`<thead><tr><th>Hisse</th><th>Alınan lot</th><th>Satılan lot</th><th>Satış maliyeti</th><th>Gerçekleşmiş K/Z</th><th>%</th><th></th></tr></thead><tbody>`;
+  if(!closed.length) c+=`<tr><td colspan="7" class="empty">Tamamen kapatılmış pozisyon yok.</td></tr>`;
+  for(const r of closed) c+=`<tr><td class="sym">${esc(r.s)}</td><td class="num">${lotf(r.bought)}</td><td class="num">${lotf(r.sold)}</td><td class="num">${money(r.soldCost)}</td><td class="num ${sign(r.realized)}">${(r.realized>=0?"+":"")+money(r.realized)}</td><td class="num ${sign(r.realized)}">${pct(r.realPct)}</td><td><button class="btn ghost mini" data-cdel="${esc(r.s)}">Sil</button></td></tr>`;
+  document.getElementById("ctable").innerHTML=c+"</tbody>";
+
+  // işlem kaydı
+  const allTx=S.tx.slice().sort((a,b)=>(a.d<b.d?1:a.d>b.d?-1:0));
+  const txSyms=[...new Set(S.tx.map(x=>x.s))].sort();
+  const symSel=document.getElementById("txf-sym");
+  if(symSel && document.activeElement!==symSel){
+    const cur=txFilter.sym;
+    symSel.innerHTML=`<option value="">Tüm hisseler</option>`+txSyms.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(s)}</option>`).join("");
+  }
+  let tx=allTx;
+  if(txFilter.sym) tx=tx.filter(x=>x.s===txFilter.sym);
+  if(txFilter.type) tx=tx.filter(x=>x.t===txFilter.type);
+  if(txFilter.from) tx=tx.filter(x=>x.d>=txFilter.from);
+  if(txFilter.to) tx=tx.filter(x=>x.d<=txFilter.to);
+  let t=`<thead><tr><th>Tarih</th><th>Hisse</th><th>İşlem</th><th>Lot</th><th>Fiyat</th><th>Komisyon</th><th>Net tutar</th><th>Not</th><th></th></tr></thead><tbody>`;
+  if(!tx.length) t+=`<tr><td colspan="9" class="empty">${allTx.length?"Filtreyle eşleşen işlem yok.":"Henüz işlem yok."}</td></tr>`;
+  for(const x of tx){
+    const g=(x.lot||0)*(x.px||0), net = x.t==="SAT" ? g-(x.com||0) : g+(x.com||0);
+    const cls = x.t==="AL"?"al":x.t==="SAT"?"sat":"ac";
+    t+=`<tr><td class="num">${esc(x.d)}</td><td class="sym">${esc(x.s)}</td><td><span class="tag ${cls}">${esc(x.t)}</span></td>
+      <td class="num">${lotf(x.lot)}</td><td class="num">${money(x.px)}</td><td class="num">${money(x.com)}</td><td class="num">${money(net)}</td>
+      <td style="text-align:left; color:var(--tx2); white-space:normal">${esc(x.note)}</td>
+      <td><button class="btn ghost mini" data-del="${esc(x.id)}">Sil</button></td></tr>`;
+  }
+  document.getElementById("ttable").innerHTML=t+"</tbody>";
+  document.getElementById("txcount").textContent = (tx.length===allTx.length) ? (allTx.length+" hareket") : (tx.length+" / "+allTx.length+" hareket");
+
+  // risk
+  const tol=S.settings.riskTol||0, budget=T.cost*tol;
+  let rp=0;
+  let rr=`<thead><tr><th>Hisse</th><th>Maliyet</th><th>K/Z %</th><th>İzin verilen zarar</th><th>Zarar-kes fiyatı</th><th>Risk payı</th><th>Kalan tampon</th><th>Durum</th></tr></thead><tbody>`;
+  if(!open.length) rr+=`<tr><td colspan="8" class="empty">Açık pozisyon yok.</td></tr>`;
+  for(const r of open){
+    const j=Number(S.riskPct[r.s]); const jj=isFinite(j)&&j>0?j:0;
+    const stop=r.avg*(1-jj), share=r.cost*jj, buf=jj+r.unrealPct; rp+=share;
+    const st = jj===0 ? ["ok","—"] : (r.unrealPct<=-jj ? ["bad","ZARAR-KES"] : (buf<=0.3*jj ? ["warn","DİKKAT"] : ["ok","OK"]));
+    rr+=`<tr><td class="sym">${esc(r.s)}</td><td class="num">${money(r.cost)}</td>
+      <td class="num ${sign(r.unreal)}">${pct(r.unrealPct)}</td>
+      <td><input class="rp num" type="number" step="1" min="0" value="${(jj*100).toFixed(0)}" data-risk="${esc(r.s)}" aria-label="${esc(r.s)} izin verilen zarar yüzdesi"></td>
+      <td class="num">${money(stop)}</td><td class="num">${money(share)}</td><td class="num">${pct(buf)}</td>
+      <td><span class="tag ${st[0]}">${st[1]}</span></td></tr>`;
+  }
+  rr+=`<tr class="total"><td>Toplam</td><td class="num">${money(T.cost)}</td><td></td><td></td><td></td><td class="num">${money(rp)}</td><td colspan="2" style="text-align:left; font-weight:400; color:var(--tx2)">Risk bütçesi ${money(budget)} ₺ · kullanım ${budget>0?pct(rp/budget):"—"}</td></tr>`;
+  document.getElementById("rtable").innerHTML=rr+"</tbody>";
+
+  // kural kontrolü
+  let kk=`<thead><tr><th>Hisse</th><th>Ağırlık</th><th>Ağırlık durumu</th><th>Gerç.memiş K/Z %</th><th>Zarar-kes</th><th>Alım kademesi</th><th>Kademe durumu</th></tr></thead><tbody>`;
+  if(!open.length) kk+=`<tr><td colspan="7" class="empty">Açık pozisyon yok.</td></tr>`;
+  for(const r of open){
+    const wOver=r.weight>S.settings.maxWeight, sOver=r.unrealPct<=S.settings.stopPct, kOver=r.buys>=S.settings.maxSteps;
+    kk+=`<tr><td class="sym">${esc(r.s)}</td><td class="num">${pct(r.weight)}</td>
+      <td><span class="tag ${wOver?"warn":"ok"}">${wOver?"LİMİT AŞILDI":"OK"}</span></td>
+      <td class="num ${sign(r.unreal)}">${pct(r.unrealPct)}</td>
+      <td><span class="tag ${sOver?"bad":"ok"}">${sOver?"ZARAR-KES":"OK"}</span></td>
+      <td class="num">${r.buys}</td>
+      <td><span class="tag ${kOver?"warn":"ok"}">${kOver?"LİMİT DOLDU":"OK"}</span></td></tr>`;
+  }
+  document.getElementById("ktable").innerHTML=kk+"</tbody>";
+
+  // izleme
+  let w=`<thead><tr><th>Hisse</th><th>Durum</th><th>Hedef fiyat</th><th>Güncel</th><th>Not</th><th></th></tr></thead><tbody>`;
+  if(!S.watch.length) w+=`<tr><td colspan="6" class="empty">Liste boş. Aşağıdan hisse ekle.</td></tr>`;
+  S.watch.forEach((x,i)=>{
+    const cur=Number(S.prices[x.s])||0;
+    w+=`<tr><td class="sym">${esc(x.s)}</td><td style="text-align:left">${esc(x.status)}</td>
+      <td class="num">${x.target?money(x.target):"—"}</td><td class="num">${cur?money(cur):"—"}</td>
+      <td style="text-align:left; color:var(--tx2); white-space:normal">${esc(x.note)}</td>
+      <td><button class="btn ghost mini" data-wdel="${i}">Sil</button></td></tr>`;
+  });
+  document.getElementById("wtable").innerHTML=w+"</tbody>";
+
+  // temel analiz özet tablosu
+  fundRenderSummary();
+  priceMapRender();
+
+  // datalist + ayarlar
+  const syms=[...new Set(S.tx.map(x=>x.s))].sort();
+  document.getElementById("symlist").innerHTML=syms.map(s=>`<option value="${esc(s)}">`).join("");
+  const fundSyms=[...new Set([...syms, ...Object.keys(S.fund||{})])].sort();
+  document.getElementById("fundsymlist").innerHTML=fundSyms.map(s=>`<option value="${esc(s)}">`).join("");
+  document.getElementById("s-cap").value=S.settings.capital;
+  document.getElementById("s-tol").value=+(S.settings.riskTol*100).toFixed(2);
+  document.getElementById("s-w").value=+(S.settings.maxWeight*100).toFixed(2);
+  document.getElementById("s-stop").value=+(S.settings.stopPct*100).toFixed(2);
+  document.getElementById("s-steps").value=S.settings.maxSteps;
+  document.getElementById("s-costMethod").value=S.settings.costMethod||"agirlikli";
+}
+
+/* ---------- Temel analiz ---------- */
+function fundCompute(f){
+  const n=x=>{ const v=Number(x); return isFinite(v)?v:0; };
+  const donen=n(f.donen), kvyk=n(f.kvyk), stok=n(f.stok), nakit=n(f.nakit);
+  const netkar=n(f.netkar), ozkaynak=n(f.ozkaynak), aktif=n(f.aktif), satis=n(f.satis), favok=n(f.favok), reel=n(f.reel);
+  const tborc=n(f.tborc), faizgider=n(f.faizgider);
+  const fk=n(f.fk), pd=n(f.pd), sfk=n(f.sfk), spd=n(f.spd), borsaFiyat=n(f.borsaFiyat), guncel=n(f.guncel);
+  const temettu=n(f.temettu), buyume=n(f.buyume);
+  const piyasaDeger=n(f.piyasaDeger);
+  const dovizVarlik=n(f.dovizVarlik), dovizYukumluluk=n(f.dovizYukumluluk);
+  const cogs=n(f.cogs), ortAlacak=n(f.ortAlacak), ortBorc=n(f.ortBorc);
+  const faaliyetKar=n(f.faaliyetKar);
+
+  const cari = kvyk>0 ? donen/kvyk : null;
+  const asit = kvyk>0 ? (donen-stok)/kvyk : null;
+  const nakitOrani = kvyk>0 ? nakit/kvyk : null;
+  const roe = ozkaynak>0 ? netkar/ozkaynak : null;
+  const roa = aktif>0 ? netkar/aktif : null;
+  const netKarMarji = satis>0 ? netkar/satis : null;
+  const favokMarji = satis>0 ? favok/satis : null;
+  const borcOzkaynak = ozkaynak>0 ? tborc/ozkaynak : null;
+  const netBorcFavok = favok>0 ? (tborc-nakit)/favok : null;
+  const faizKarsilama = faizgider>0 ? favok/faizgider : null;
+  const olmasiGerekenFk = (fk>0 && borsaFiyat>0) ? (sfk/fk)*borsaFiyat : null;
+  const olmasiGerekenPd = (pd>0 && borsaFiyat>0) ? (spd/pd)*borsaFiyat : null;
+  const icselDeger = (olmasiGerekenFk!=null && olmasiGerekenPd!=null) ? (olmasiGerekenFk+olmasiGerekenPd)/2 : null;
+  const neKadar = (icselDeger!=null && guncel>0) ? icselDeger-guncel : null;
+  const neKadarPct = (neKadar!=null && guncel>0) ? neKadar/guncel*100 : null;
+  const temettuVerimi = guncel>0 ? temettu/guncel*100 : null;
+  const peg = (buyume>0 && fk>0) ? fk/buyume : null;
+
+  const aktifDevir = aktif>0 ? satis/aktif : null;
+  const ozkaynakCarpani = ozkaynak>0 ? aktif/ozkaynak : null;
+  const roeDupont = (netKarMarji!=null && aktifDevir!=null && ozkaynakCarpani!=null) ? netKarMarji*aktifDevir*ozkaynakCarpani : null;
+
+  const firmaDegeri = piyasaDeger>0 ? piyasaDeger+tborc-nakit : null;
+  const evFavok = (firmaDegeri!=null && favok>0) ? firmaDegeri/favok : null;
+  const pdS = (piyasaDeger>0 && satis>0) ? piyasaDeger/satis : null;
+
+  const netDoviz = (f.dovizVarlik!==undefined && f.dovizVarlik!=="") || (f.dovizYukumluluk!==undefined && f.dovizYukumluluk!=="") ? dovizVarlik-dovizYukumluluk : null;
+
+  const stokGun = cogs>0 ? (stok/cogs)*365 : null;
+  const alacakGun = satis>0 ? (ortAlacak/satis)*365 : null;
+  const borcGun = cogs>0 ? (ortBorc/cogs)*365 : null;
+  const ccc = (stokGun!=null && alacakGun!=null && borcGun!=null) ? stokGun+alacakGun-borcGun : null;
+
+  const faaliyetMarji = satis>0 ? faaliyetKar/satis : null;
+
+  return {cari,asit,nakitOrani,roe,roa,netKarMarji,favokMarji,borcOzkaynak,netBorcFavok,faizKarsilama,
+    olmasiGerekenFk,olmasiGerekenPd,icselDeger,neKadar,neKadarPct,temettuVerimi,peg,reel,
+    aktifDevir,ozkaynakCarpani,roeDupont,firmaDegeri,evFavok,pdS,netDoviz,stokGun,alacakGun,borcGun,ccc,faaliyetMarji};
+}
+const fnum=(v,d=2)=>v==null?"—":nf(d).format(v);
+const fpct=(v,d=1)=>v==null?"—":nf(d).format(v)+"%";
+function fundTagOk(cond){ return cond===null?"": (cond?"ok\">OK":"bad\">DÜŞÜK"); }
+function fundReadForm(){
+  const v=xlV(), g=k=>{ const el=document.getElementById("xi-"+k); return el?el.value:""; }, o=x=>isFinite(x)?x:"";
+  const P=xPD(v), A=(a,b)=>isFinite(b)?(isFinite(a)?(a+b)/2:b):"";
+  return {donen:g("donen"),kvyk:g("kvy"),stok:g("stok"),nakit:g("nakit"),netkar:g("nk"),ozkaynak:g("oz"),aktif:g("aktif"),satis:g("sat"),favok:g("favok"),reel:g("reel"),
+    tborc:g("fb"),faizgider:g("faiz"),fk:o(isFinite(v.fk)?v.fk:xd(P,v.nk)),pd:o(isFinite(v.pd)?v.pd:xd(P,v.oz)),sfk:g("sfk"),spd:g("spd"),borsaFiyat:g("borsaFiyat")||g("fiyat"),guncel:g("fiyat"),
+    temettu:g("tem"),buyume:g("eb"),piyasaDeger:o(P),dovizVarlik:g("dovizVarlik"),dovizYukumluluk:g("dovizYukumluluk"),
+    cogs:g("smm"),ortAlacak:o(A(v.alacak0,v.alacak)),ortBorc:o(A(v.tb0,v.tb)),faaliyetKar:g("ebit")};
+}
+function fundWriteForm(f){
+  const L={donen:"donen",kvyk:"kvy",stok:"stok",nakit:"nakit",netkar:"nk",ozkaynak:"oz",aktif:"aktif",satis:"sat",favok:"favok",reel:"reel",tborc:"fb",faizgider:"faiz",sfk:"sfk",spd:"spd",guncel:"fiyat",temettu:"tem",buyume:"eb",dovizVarlik:"dovizVarlik",dovizYukumluluk:"dovizYukumluluk",cogs:"smm",faaliyetKar:"ebit"}, o={};
+  for(const k in L) if(f[k]!==undefined&&f[k]!=="") o[L[k]]=f[k];
+  if(!f.xl){ // eski kayıtlar: ayrı girilen değerleri yeni forma taşı
+    if(f.piyasaDeger) o.pdeger=f.piyasaDeger; if(f.fk) o.fk=f.fk; if(f.pd) o.pd=f.pd; if(f.borsaFiyat) o.borsaFiyat=f.borsaFiyat;
+    if(f.ortAlacak){ o.alacak=o.alacak0=f.ortAlacak; } if(f.ortBorc){ o.tb=o.tb0=f.ortBorc; } if(f.stok) o.stok0=f.stok;
+  }
+  xlWrite(Object.assign(o,f.xl||{})); trWrite(f.trend);
+}
+function liveFundUpdate(){ xlCalc(); }
+function fundShowResult(sym, c){
+  const card=document.getElementById("fundResultCard");
+  card.hidden=false;
+  document.getElementById("fundResultSym").textContent="— "+sym;
+  const rows=[
+    ["Cari oran", fnum(c.cari), ">2", c.cari==null?"":c.cari>2?"ok":"bad", c.cari==null?"":c.cari>2?"OK":"DÜŞÜK"],
+    ["Asit test oranı", fnum(c.asit), ">1", c.asit==null?"":c.asit>1?"ok":"bad", c.asit==null?"":c.asit>1?"OK":"DÜŞÜK"],
+    ["Nakit oranı", fnum(c.nakitOrani), ">0,20", c.nakitOrani==null?"":c.nakitOrani>0.2?"ok":"warn", c.nakitOrani==null?"":c.nakitOrani>0.2?"OK":"DÜŞÜK"],
+    ["Özsermaye kârlılığı (ROE)", fpct(c.roe==null?null:c.roe*100), "reel faiz: "+fpct(c.reel), c.roe==null?"":(c.roe*100>c.reel?"ok":"bad"), c.roe==null?"":(c.roe*100>c.reel?"ÜSTÜNDE":"DÜŞÜK")],
+    ["Aktif kârlılığı (ROA)", fpct(c.roa==null?null:c.roa*100), "—", "", ""],
+    ["Net kâr marjı", fpct(c.netKarMarji==null?null:c.netKarMarji*100), "—", "", ""],
+    ["FAVÖK marjı", fpct(c.favokMarji==null?null:c.favokMarji*100), "—", "", ""],
+    ["Borç/Özkaynak", fnum(c.borcOzkaynak), "<1", c.borcOzkaynak==null?"":c.borcOzkaynak<1?"ok":"warn", c.borcOzkaynak==null?"":c.borcOzkaynak<1?"OK":"YÜKSEK"],
+    ["Net borç/FAVÖK", fnum(c.netBorcFavok), "<3", c.netBorcFavok==null?"":c.netBorcFavok<3?"ok":"warn", c.netBorcFavok==null?"":c.netBorcFavok<3?"OK":"YÜKSEK"],
+    ["Faiz karşılama oranı", fnum(c.faizKarsilama), ">4", c.faizKarsilama==null?"":c.faizKarsilama>4?"ok":"warn", c.faizKarsilama==null?"":c.faizKarsilama>4?"OK":"DÜŞÜK"],
+    ["Olması gereken F/K bazlı fiyat", fnum(c.olmasiGerekenFk), "", "", ""],
+    ["Olması gereken PD/DD bazlı fiyat", fnum(c.olmasiGerekenPd), "", "", ""],
+    ["İçsel değer", fnum(c.icselDeger), "", "", ""],
+    ["Ne kadar ucuz/pahalı", fnum(c.neKadar), fpct(c.neKadarPct), c.neKadar==null?"":c.neKadar>0?"al":"sat", c.neKadar==null?"":c.neKadar>0?"UCUZ":"PAHALI"],
+    ["Temettü verimi", fpct(c.temettuVerimi), "—", "", ""],
+    ["PEG oranı", fnum(c.peg), "<1", c.peg==null?"":c.peg<1?"ok":"warn", c.peg==null?"":c.peg<1?"UCUZ":"PAHALI"],
+    ["Aktif devir hızı", fnum(c.aktifDevir), "—", "", ""],
+    ["Özsermaye çarpanı", fnum(c.ozkaynakCarpani), "—", "", ""],
+    ["ROE (DuPont kontrolü)", fpct(c.roeDupont==null?null:c.roeDupont*100), "1. yöntemle aynı çıkmalı", "", ""],
+    ["Firma değeri (EV)", fnum(c.firmaDegeri), "", "", ""],
+    ["EV/FAVÖK", fnum(c.evFavok), "sektörle kıyasla", "", ""],
+    ["PD/S", fnum(c.pdS), "sektörle kıyasla", "", ""],
+    ["Net döviz pozisyonu", fnum(c.netDoviz), c.netDoviz==null?"":(c.netDoviz>=0?"":"kur riski var"), c.netDoviz==null?"":(c.netDoviz>=0?"ok":"warn"), c.netDoviz==null?"":(c.netDoviz>=0?"KAPALI":"AÇIK POZİSYON")],
+    ["Stok gün sayısı", fnum(c.stokGun,0), "gün", "", ""],
+    ["Alacak gün sayısı", fnum(c.alacakGun,0), "gün", "", ""],
+    ["Borç gün sayısı", fnum(c.borcGun,0), "gün", "", ""],
+    ["Nakit dönüşüm süresi", fnum(c.ccc,0), "gün — kısa olması iyi", "", ""],
+    ["Faaliyet kâr marjı", fpct(c.faaliyetMarji==null?null:c.faaliyetMarji*100), "FAVÖK marjıyla kıyasla", "", ""]
+  ];
+  let h=`<thead><tr><th>Rasyo</th><th>Değer</th><th>Referans</th><th>Durum</th></tr></thead><tbody>`;
+  for(const r of rows){
+    h+=`<tr><td style="text-align:left">${r[0]}</td><td class="num">${r[1]}</td><td style="text-align:left; color:var(--tx2)">${r[2]}</td>
+      <td>${r[4]?`<span class="tag ${r[3]}">${r[4]}</span>`:""}</td></tr>`;
+  }
+  document.getElementById("fundResultTable").innerHTML=h+"</tbody>";
+}
+function fundRenderSummary(){
+  const syms=Object.keys(S.fund||{}).sort();
+  let h=`<thead><tr><th>Hisse</th><th>Cari oran</th><th>Asit test</th><th>ROE</th><th>İçsel değer</th><th>Güncel</th><th>Ne kadar ucuz</th><th>%</th><th>Durum</th></tr></thead><tbody>`;
+  if(!syms.length) h+=`<tr><td colspan="9" class="empty">Henüz kayıtlı temel analiz yok.</td></tr>`;
+  for(const s of syms){
+    const c=fundCompute(S.fund[s]);
+    const guncel=Number(S.fund[s].guncel)||0;
+    const durum = c.neKadar==null?"":(c.neKadar>0?["al","UCUZ"]:["sat","PAHALI"]);
+    h+=`<tr><td class="sym">${esc(s)}</td><td class="num">${fnum(c.cari)}</td><td class="num">${fnum(c.asit)}</td>
+      <td class="num">${c.roe==null?"—":fpct(c.roe*100)}</td><td class="num">${fnum(c.icselDeger)}</td>
+      <td class="num">${guncel?money(guncel):"—"}</td><td class="num">${fnum(c.neKadar)}</td><td class="num">${fpct(c.neKadarPct)}</td>
+      <td>${durum?`<span class="tag ${durum[0]}">${durum[1]}</span>`:""}</td></tr>`;
+  }
+  document.getElementById("fundSummaryTable").innerHTML=h+"</tbody>";
+}
+document.getElementById("tab-temel").addEventListener("input",liveFundUpdate);
+document.getElementById("btnFundLoad").addEventListener("click",()=>{
+  const s=document.getElementById("tf-s").value.trim().toUpperCase();
+  const err=document.getElementById("tf-err"); err.textContent="";
+  if(!s){ err.textContent="Önce hisse kodu yaz."; return; }
+  if(S.fund && S.fund[s]) fundWriteForm(S.fund[s]);
+  else { fundWriteForm({}); if(S.prices[s]) document.getElementById("xi-fiyat").value=S.prices[s]; err.textContent=s+" için kayıtlı veri yok, boş form açıldı."; }
+  document.getElementById("fundResultCard").hidden=true;
+  liveFundUpdate();
+});
+document.getElementById("btnFundClear").addEventListener("click",()=>{
+  fundWriteForm({}); document.getElementById("tf-err").textContent=""; document.getElementById("fundResultCard").hidden=true;
+  liveFundUpdate();
+});
+document.getElementById("btnFundSave").addEventListener("click",()=>{
+  const s=document.getElementById("tf-s").value.trim().toUpperCase();
+  const err=document.getElementById("tf-err");
+  if(!s){ err.textContent="Önce hisse kodu yaz."; return; }
+  err.textContent="";
+  const f=fundReadForm();
+  mutate(()=>{ if(!S.fund) S.fund={}; S.fund[s]=Object.assign(f,{xl:xlRead(),trend:trRead()}); });
+  flag(s+" temel analizi kaydedildi");
+});
+
+/* ---------- Excel hesap makinesi (Temel Analiz 11) ---------- */
+const XL_PCT=new Set(["rf","erp","vo","kd","eb","roa0","bta0","bm0"]);
+const XL_IN=`#Gelir tablosu ve nakit akışı (yıllık / son 12 ay)
+sat|Net satışlar (TL)
+smm|Satılan malın maliyeti – SMM (TL)
+favok|FAVÖK (TL)
+ebit|EBIT / faaliyet kârı (TL)
+nk|Net kâr (TL)
+faiz|Faiz gideri (TL)
+amort|Amortisman gideri (TL)
+cfo|İşletme nakit akışı – CFO (TL)
+capex|Yatırım harcaması – Capex (TL)
+hisse|Ağırlıklı ort. hisse sayısı
+sga|Satış + genel yönetim giderleri (TL)
+#Bilanço – dönem sonu
+donen|Dönen varlıklar (TL)
+stok|Stoklar (TL)
+alacak|Ticari alacaklar (TL)
+nakit|Nakit + nakit benzerleri (TL)
+kvy|KV yükümlülükler (TL)
+tb|Ticari borçlar (TL)
+aktif|Toplam varlıklar (TL)
+oz|Özkaynaklar (TL)
+fb|Finansal borçlar (TL)
+yuk|Toplam yükümlülükler (TL)
+gyk|Geçmiş yıl kârları / (zararları) (TL)
+ppe|Maddi duran varlıklar – PP&E (TL)
+#Bilanço ve gelir – dönem başı / önceki dönem
+alacak0|Önceki ticari alacaklar (TL)
+stok0|Önceki stoklar (TL)
+tb0|Önceki ticari borçlar (TL)
+aktif0|Önceki toplam varlıklar (TL)
+oz0|Önceki özkaynaklar (TL)
+donen0|Önceki dönen varlıklar (TL)
+ppe0|Önceki PP&E (TL)
+sat0|Önceki net satışlar (TL)
+nk0|Önceki net kâr (TL)
+cfo0|Önceki CFO (TL)
+amort0|Önceki amortisman (TL)
+sga0|Önceki satış + genel yön. gideri (TL)
+yuk0|Önceki toplam yükümlülükler (TL)
+hisse0|Önceki ağırlıklı ort. hisse sayısı
+#Piyasa / değerleme
+fiyat|Hisse fiyatı (TL)
+dh|Dolaşımdaki hisse sayısı
+tem|Hisse başına temettü (TL)
+beta|Beta
+rf|Risksiz faiz (%)
+erp|Hisse senedi risk primi – ERP (%)
+vo|Vergi oranı (%)
+kd|Borçlanma maliyeti – Kd (%)
+eb|Beklenen EPS büyümesi (%)
+#Piotroski – önceki dönem göstergeleri
+roa0|Önceki ROA (%)
+bta0|Önceki borç / toplam varlık (%)
+cari0|Önceki cari oran (x)
+bm0|Önceki brüt kâr marjı (%)
+ad0|Önceki aktif devir hızı (x)
+ihrac|Dönemde yeni hisse ihracı var mı? (1=Evet, 0=Hayır)
+#Panele özgü girdiler (içsel değer, reel faiz, kur riski)
+pdeger|Piyasa değeri (TL) – boşsa fiyat × hisse sayısı
+fk|Şirket F/K – boşsa hesaplanır
+pd|Şirket PD/DD – boşsa hesaplanır
+sfk|BİST / sektör F/K
+spd|BİST / sektör PD/DD
+borsaFiyat|F/K–PD/DD'de kullanılan fiyat – boşsa hisse fiyatı
+reel|Reel piyasa faizi (%)
+dovizVarlik|Döviz varlıkları (TL karşılığı)
+dovizYukumluluk|Döviz yükümlülükleri (TL karşılığı)`;
+const XL_KEYS=XL_IN.split("\n").filter(l=>l[0]!=="#").map(l=>l.split("|")[0]);
+const XL_SMP={sat:39241815,smm:28871412,favok:8950124,ebit:7215812,nk:4821503,faiz:3412850,amort:1734312,cfo:5812450,capex:3140220,hisse:4560000000,sga:3175884,
+ donen:248770125,stok:82410500,alacak:95120300,nakit:39468926,kvy:185320100,tb:62150400,aktif:549750812,oz:308530212,fb:55900500,yuk:241220600,gyk:88410200,ppe:52180400,
+ alacak0:78400100,stok0:68150300,tb0:51200400,aktif0:485300200,oz0:285150000,donen0:198500200,ppe0:42100300,sat0:31250400,nk0:3850120,cfo0:4120300,amort0:1320100,sga0:2850400,yuk0:200150000,hisse0:4560000000,
+ fiyat:346.75,dh:4560000000,tem:0.35,beta:0.92,rf:0.37,erp:0.065,vo:0.25,kd:0.385,eb:0.22,roa0:0.0115,bta0:0.462,cari0:1.28,bm0:0.245,ad0:0.085,ihrac:0};
+const xd=(a,b)=>b>0?a/b:NaN, xm=(a,b)=>(a+b)/2;
+const xPD=v=>isFinite(v.pdeger)?v.pdeger:v.fiyat*v.dh, xEV=v=>xPD(v)+v.fb-v.nakit;
+const xDSO=v=>365*xd(xm(v.alacak0,v.alacak),v.sat), xDIO=v=>365*xd(xm(v.stok0,v.stok),v.smm), xDPO=v=>365*xd(xm(v.tb0,v.tb),v.smm);
+const xROIC=v=>xd(v.ebit*(1-v.vo),v.fb+v.oz-v.nakit);
+const xWACC=v=>{const E=xPD(v); return xd(E,E+v.fb)*(v.rf+v.beta*v.erp)+xd(v.fb,E+v.fb)*v.kd*(1-v.vo);};
+function xB(v){
+  const gm=xd(v.sat-v.smm,v.sat), ok=v.aktif>0&&v.aktif0>0;
+  const o={dsri:xd(xd(v.alacak,v.sat),xd(v.alacak0,v.sat0)), gmi:xd(v.bm0,gm),
+    aqi:ok?xd(1-(v.donen+v.ppe)/v.aktif,1-(v.donen0+v.ppe0)/v.aktif0):NaN, sgi:xd(v.sat,v.sat0),
+    depi:xd(xd(v.amort0,v.amort0+v.ppe0),xd(v.amort,v.amort+v.ppe)), sgai:xd(xd(v.sga,v.sat),xd(v.sga0,v.sat0)),
+    lvgi:xd(xd(v.yuk,v.aktif),xd(v.yuk0,v.aktif0)), tata:v.aktif>0?(v.nk-v.cfo)/v.aktif:NaN};
+  o.m=-4.84+.92*o.dsri+.528*o.gmi+.404*o.aqi+.892*o.sgi+.115*o.depi-.172*o.sgai+4.679*o.tata-.327*o.lvgi;
+  return o;
+}
+function xPio(v){
+  if([v.nk,v.cfo,v.aktif,v.aktif0,v.sat,v.smm,v.fb,v.donen,v.kvy,v.nk0,v.cfo0,v.roa0,v.bta0,v.cari0,v.bm0,v.ad0,v.ihrac].some(x=>!isFinite(x))) return NaN;
+  const A=xm(v.aktif0,v.aktif);
+  return (v.nk>0)+(v.cfo>0)+(xd(v.nk,A)>v.roa0)+(v.cfo>v.nk)+(xd(v.fb,v.aktif)<v.bta0)+(xd(v.donen,v.kvy)>v.cari0)+(v.ihrac==0)+(xd(v.sat-v.smm,v.sat)>v.bm0)+(xd(v.sat,A)>v.ad0);
+}
+const XF={x:v=>fnum(v,2)+"x",p:v=>fpct(v*100,2),g:v=>fnum(v,0)+" gün",t:v=>fnum(v,0),n:v=>fnum(v,2),n3:v=>fnum(v,3),s:v=>fnum(v,0)+" / 9"};
+const XT={z:x=>x>2.99?"iyi":x>=1.81?"orta":"kotu", f:x=>x>=7?"iyi":x>=4?"orta":"kotu", m:x=>x<-1.78?"iyi":"kotu", w:x=>x>0?"iyi":"kotu", u:x=>x>=.2?"iyi":x>-.2?"orta":"kotu"};
+const XL_LB={iyi:"İYİ",orta:"ORTA",kotu:"KÖTÜ"};
+const XL_ROWS=[
+["Likidite","Cari Oran",v=>xd(v.donen,v.kvy),"x","<1 zayıf; 1–1,5 dikkat; 1,5–2,5 rahat; >3 incele","Dönen Varlık / KV Yükümlülük"],
+["Likidite","Asit-Test",v=>xd(v.donen-v.stok,v.kvy),"x","<0,7 zayıf; 0,7–1 dikkat; 1–1,5 iyi; >2 incele","(Dönen Varlık − Stok) / KV Yükümlülük"],
+["Likidite","Nakit Oranı",v=>xd(v.nakit,v.kvy),"x","<0,20 düşük; 0,20–0,50 orta; 0,50–1 güçlü; >1 çok yüksek","Nakit / KV Yükümlülük"],
+["Likidite","Net İşletme Sermayesi",v=>v.donen-v.kvy,"t","Pozitif genelde rahat; negatifse neden araştır","Dönen Varlık − KV Yükümlülük"],
+["Borçluluk","Toplam Borç Oranı",v=>xd(v.fb,v.aktif),"p","<30% düşük; 30–50% orta; 50–70% yüksek; >70% çok yüksek","Finansal Borç / Toplam Varlık"],
+["Borçluluk","Borç / Özkaynak",v=>xd(v.fb,v.oz),"x","<0,5 düşük; 0,5–1 orta; 1–2 yüksek; >2 çok yüksek","Finansal Borç / Özkaynak"],
+["Borçluluk","Net Borç / FAVÖK",v=>xd(v.fb-v.nakit,v.favok),"x","<1x düşük; 1–2x orta; 2–3x yükselen; >3x yüksek","(Finansal Borç − Nakit) / FAVÖK"],
+["Borçluluk","Faiz Karşılama",v=>xd(v.ebit,v.faiz),"x","<1x kritik; 1–2x zayıf; 2–4x orta; >4x güçlü","EBIT / Faiz Gideri"],
+["Borçluluk","Finansal Kaldıraç",v=>xd(v.aktif,v.oz),"x","<1,5x düşük; 1,5–2,5x orta; 2,5–3,5x yüksek; >3,5x çok yüksek","Toplam Varlık / Özkaynak"],
+["Borçluluk","Net Borç / CFO",v=>xd(v.fb-v.nakit,v.cfo),"x","Düşük olması daha rahat borç ödeme kapasitesi","Net Borç / CFO"],
+["Borçluluk","CFO / Borç",v=>xd(v.cfo,v.fb),"x","Yüksek olması borcun nakitle servis gücünü artırır","CFO / Finansal Borç"],
+["Faaliyet","Alacak Devir Hızı",v=>xd(v.sat,xm(v.alacak0,v.alacak)),"x","Sektör/trend ile kıyasla","Net Satış / Ortalama Alacak"],
+["Faaliyet","DSO (Gün)",xDSO,"g","<45 hızlı; 45–75 orta; >75 dikkat","365 × Ortalama Alacak / Satış"],
+["Faaliyet","Stok Devir Hızı",v=>xd(v.smm,xm(v.stok0,v.stok)),"x","Sektör/trend ile kıyasla","SMM / Ortalama Stok"],
+["Faaliyet","DIO (Gün)",xDIO,"g","<60 hızlı; 60–120 orta; >120 dikkat","365 × Ortalama Stok / SMM"],
+["Faaliyet","DPO (Gün)",xDPO,"g","30–90 sık görülür; yüksekse ayrıca incele","365 × Ortalama Ticari Borç / SMM"],
+["Faaliyet","CCC (Gün)",v=>xDSO(v)+xDIO(v)-xDPO(v),"g","<30 iyi; 30–90 orta; >90 dikkat; negatif bazı modellerde güçlü","DSO + DIO − DPO"],
+["Faaliyet","Aktif Devir Hızı",v=>xd(v.sat,xm(v.aktif0,v.aktif)),"x","Sektör/trend ile kıyasla","Satış / Ortalama Toplam Varlık"],
+["Kârlılık","Brüt Kâr Marjı",v=>xd(v.sat-v.smm,v.sat),"p","<10 düşük; 10–20 orta; 20–40 iyi; >40 yüksek; sektör bazlı","Brüt Kâr / Satış"],
+["Kârlılık","FAVÖK Marjı",v=>xd(v.favok,v.sat),"p","<5 düşük; 5–10 orta; 10–20 iyi; >20 yüksek","FAVÖK / Satış"],
+["Kârlılık","EBIT Marjı",v=>xd(v.ebit,v.sat),"p","<5 düşük; 5–10 orta; 10–15 iyi; >15 güçlü","EBIT / Satış"],
+["Kârlılık","Net Kâr Marjı",v=>xd(v.nk,v.sat),"p","<5 düşük; 5–10 orta; 10–20 iyi; >20 yüksek","Net Kâr / Satış"],
+["Kârlılık","ROA",v=>xd(v.nk,xm(v.aktif0,v.aktif)),"p","<5 düşük; 5–10 orta; 10–15 iyi; >15 yüksek","Net Kâr / Ortalama Varlık"],
+["Kârlılık","ROE",v=>xd(v.nk,xm(v.oz0,v.oz)),"p","<5 düşük; 5–10 orta; 10–15 iyi; >15 yüksek","Net Kâr / Ortalama Özkaynak"],
+["Kârlılık","ROIC",xROIC,"p","ROIC > WACC ise değer yaratımı lehine","EBIT×(1−Vergi) / (Borç + Özkaynak − Nakit)"],
+["Kârlılık","ROCE",v=>xd(v.ebit,v.fb+v.oz),"p","Sektör ve trend bazlı","EBIT / (Borç + Özkaynak)"],
+["Kârlılık","CFO Marjı",v=>xd(v.cfo,v.sat),"p","Yüksek ve istikrarlı olması olumlu","CFO / Satış"],
+["Büyüme","Satış Büyümesi",v=>xd(v.sat-v.sat0,v.sat0),"p","0–10 düşük; 10–20 orta; 20–30 güçlü; >30 çok yüksek","(Cari − Önceki Satış) / Önceki Satış"],
+["Büyüme","Net Kâr Büyümesi",v=>xd(v.nk-v.nk0,v.nk0),"p","Trend bazlı; baz etkisine dikkat","(Cari − Önceki Net Kâr) / Önceki Net Kâr"],
+["Büyüme","EPS Büyümesi",v=>xd(v.nk/v.hisse,v.nk0/v.hisse0)-1,"p","Seyrelme/geri alım etkisini de içerir; trendle oku","(Cari EPS / Önceki EPS) − 1"],
+["Nakit","CFO / Net Kâr",v=>xd(v.cfo,v.nk),"x",">1 güçlü; 0,7–1 izlenebilir; <0,7 dikkat","CFO / Net Kâr"],
+["Nakit","FCF",v=>v.cfo-v.capex,"t","Pozitif ve sürdürülebilir olması tercih edilir","CFO − Capex"],
+["Nakit","FCF Marjı",v=>xd(v.cfo-v.capex,v.sat),"p",">10 güçlü; 5–10 orta; <5 zayıf; sektör bazlı","FCF / Satış"],
+["Nakit","FCF Verimi",v=>xd(v.cfo-v.capex,xPD(v)),"p","<3 düşük; 3–6 orta; 6–10 yüksek; >10 çok yüksek","FCF / Piyasa Değeri"],
+["Nakit","CFO / Capex",v=>xd(v.cfo,v.capex),"x",">1x yatırım harcaması CFO ile karşılanıyor","CFO / Capex"],
+["Piyasa","EPS",v=>xd(v.nk,v.hisse),"n3","Tek başına eşik yok","Net Kâr / Ağırlıklı Ort. Hisse"],
+["Piyasa","Piyasa Değeri",xPD,"t","Şirketin equity market value'su","Fiyat × Hisse Sayısı"],
+["Piyasa","Net Borç",v=>v.fb-v.nakit,"t","Negatifse net nakit","Finansal Borç − Nakit"],
+["Piyasa","FD (EV)",xEV,"t","Equity value'ya borç/nakit etkisini ekler","Piyasa Değeri + Net Borç"],
+["Piyasa","F/K (P/E)",v=>isFinite(v.fk)?v.fk:xd(xPD(v),v.nk),"x","<8x düşük; 8–12x orta; 12–18x yüksek; >18x çok yüksek; heuristik","Piyasa Değeri / Net Kâr"],
+["Piyasa","PD/DD (P/B)",v=>isFinite(v.pd)?v.pd:xd(xPD(v),v.oz),"x","<1x düşük; 1–2x orta; 2–4x yüksek; >4x çok yüksek","Piyasa Değeri / Özkaynak"],
+["Piyasa","FD/FAVÖK",v=>xd(xEV(v),v.favok),"x","<6x düşük; 6–10x orta; 10–15x yüksek; >15x çok yüksek","EV / FAVÖK"],
+["Piyasa","FD/Satış",v=>xd(xEV(v),v.sat),"x","<1x düşük; 1–2x orta; 2–4x yüksek; >4x çok yüksek","EV / Satış"],
+["Piyasa","Temettü Verimi",v=>xd(v.tem,v.fiyat),"p","<2 düşük; 2–5 orta; 5–8 yüksek; >8 çok yüksek","Hisse Başı Temettü / Fiyat"],
+["Piyasa","Temettü Dağıtım Oranı",v=>xd(v.tem*v.dh,v.nk),"p","<30 düşük; 30–60 orta; 60–80 yüksek; >80 çok yüksek","Toplam Temettü / Net Kâr"],
+["Piyasa","Net Borç / Piyasa Değeri",v=>xd(v.fb-v.nakit,xPD(v)),"p","<0 net nakit; 0–25 düşük; 25–50 orta; >50 yüksek","Net Borç / Piyasa Değeri"],
+["Piyasa","PEG",v=>xd(xd(xPD(v),v.nk),v.eb*100),"n","<1 düşük; 1–2 orta; >2 yüksek; tahmin kalitesine bağlı","F/K / Beklenen EPS Büyümesi (%)"],
+["Sermaye","Özkaynak Maliyeti (CAPM)",v=>v.rf+v.beta*v.erp,"p","Model girdilerine bağlı; varsayımlar kritik","Rf + Beta × ERP"],
+["Sermaye","WACC",xWACC,"p","ROIC ile karşılaştırılır; düşük WACC değerlemeyi destekler","E/V×Ke + D/V×Kd×(1−T)"],
+["Sermaye","ROIC – WACC",v=>xROIC(v)-xWACC(v),"p","Pozitif: değer yaratımı lehine; negatif: değer kaybı","ROIC − WACC","w"],
+["Kalite","DuPont ROE",v=>xd(v.nk,v.sat)*xd(v.sat,xm(v.aktif0,v.aktif))*xd(xm(v.aktif0,v.aktif),xm(v.oz0,v.oz)),"p","ROE'nin kaynağına bak (marj / devir / kaldıraç)","Net Marj × Aktif Devir × Finansal Kaldıraç"],
+["İleri Risk","Altman Z-Score",v=>v.aktif>0&&v.yuk>0?1.2*((v.donen-v.kvy)/v.aktif)+1.4*(v.gyk/v.aktif)+3.3*(v.ebit/v.aktif)+.6*(xPD(v)/v.yuk)+v.sat/v.aktif:NaN,"n","Halka açık imalat: >2,99 güvenli; 1,81–2,99 gri; <1,81 riskli","1,2 WC/TA + 1,4 RE/TA + 3,3 EBIT/TA + 0,6 MVE/TL + 1,0 Sales/TA","z"],
+["İleri Kalite","Piotroski F-Score",xPio,"s","0–3 zayıf; 4–6 orta; 7–9 güçlü","9 adet 0/1 sinyalin toplamı","f"],
+["İleri Risk","Beneish DSRI",v=>xB(v).dsri,"n3",">1,0 alacaklar satıştan hızlı büyüyor","(AR/Sales) cari ÷ önceki"],
+["İleri Risk","Beneish GMI",v=>xB(v).gmi,"n3",">1 brüt marj daralması","GM önceki ÷ GM cari"],
+["İleri Risk","Beneish AQI",v=>xB(v).aqi,"n3",">1 varlık kalitesi değişimi","[1−(CA+PP&E)/TA] cari ÷ önceki"],
+["İleri Risk","Beneish SGI",v=>xB(v).sgi,"n3",">1 satış büyümesi; aşırı büyümeyi kontrol et","Satış cari ÷ önceki"],
+["İleri Risk","Beneish DEPI",v=>xB(v).depi,"n3",">1 amortisman oranında değişim","[Dep/(Dep+PP&E)] önceki ÷ cari"],
+["İleri Risk","Beneish SGAI",v=>xB(v).sgai,"n3",">1 SG&A satıştan hızlı artıyor","(SG&A/Sales) cari ÷ önceki"],
+["İleri Risk","Beneish LVGI",v=>xB(v).lvgi,"n3",">1 kaldıraç artışı","(TL/TA) cari ÷ önceki"],
+["İleri Risk","Beneish TATA",v=>xB(v).tata,"n3","Yüksek pozitif değer tahakkuk ağırlığını gösterir","(Net Kâr − CFO) / TA"],
+["İleri Risk","Beneish M-Score",v=>xB(v).m,"n3","−1,78 üstü daha yüksek tarama şüphesi; altı daha düşük","−4,84 + 8 ağırlıklı endeks","m"]
+];
+const xlExtra=(C,nn)=>[
+["Değerleme","F/K bazlı adil fiyat",()=>nn(C.olmasiGerekenFk),"n","Şirket sektör F/K'sıyla işlem görse fiyatı","(Sektör F/K ÷ Şirket F/K) × Fiyat"],
+["Değerleme","PD/DD bazlı adil fiyat",()=>nn(C.olmasiGerekenPd),"n","Şirket sektör PD/DD'siyle işlem görse fiyatı","(Sektör PD/DD ÷ Şirket PD/DD) × Fiyat"],
+["Değerleme","İçsel değer",()=>nn(C.icselDeger),"n","İki adil fiyatın ortalaması","(F/K bazlı + PD/DD bazlı) ÷ 2"],
+["Değerleme","Ne kadar ucuz / pahalı",()=>nn(C.neKadarPct)/100,"p","Pozitif ucuz, negatif pahalı; ±%20 içi makul","(İçsel değer − Fiyat) ÷ Fiyat","u"],
+["Kur riski","Net döviz pozisyonu",()=>nn(C.netDoviz),"t","Negatifse açık pozisyon: kur artışında zarar riski","Döviz varlıkları − Döviz yükümlülükleri"],
+["Kârlılık","ROE − reel faiz (puan)",v=>{const a=xd(v.nk,xm(v.oz0,v.oz)),r=isFinite(a)?a:xd(v.nk,v.oz);return r*100-v.reel;},"n","Pozitif: ROE reel faizin üzerinde (panelin kuralı)","ROE % − Reel piyasa faizi %","w"]
+];
+const XL_PRI=[
+["1. Kâr gerçek mi? (nakde dönüşüm)",["CFO / Net Kâr","FCF","FCF Marjı"]],
+["2. Sermaye getirisi",["ROIC","ROE","ROIC – WACC","DuPont ROE"]],
+["3. Borç yükü ve kur riski",["Net Borç / FAVÖK","Faiz Karşılama","Borç / Özkaynak","Net döviz pozisyonu"]],
+["4. Marjlar ve büyüme",["Brüt Kâr Marjı","FAVÖK Marjı","Net Kâr Marjı","Satış Büyümesi"]],
+["5. Değerleme",["F/K (P/E)","PD/DD (P/B)","FD/FAVÖK","PEG","Ne kadar ucuz / pahalı"]],
+["6. Likidite (eleme filtresi)",["Cari Oran","Asit-Test","Nakit Oranı"]],
+["7. Faaliyet verimliliği",["CCC (Gün)","DSO (Gün)","DIO (Gün)"]],
+["8. Temettü",["Temettü Verimi","Temettü Dağıtım Oranı"]],
+["9. Taramalar (ilk süzgeç)",["Altman Z-Score","Piotroski F-Score","Beneish M-Score"]]
+];
+function xlV(){ const v={}; for(const k of XL_KEYS){ let x=fxNum(document.getElementById("xi-"+k).value); if(XL_PCT.has(k)) x/=100; v[k]=x; } return v; }
+function xlRead(){ const o={}; for(const k of XL_KEYS){ const s=document.getElementById("xi-"+k).value; if(s!=="") o[k]=s; } return o; }
+function xlWrite(o){ for(const k of XL_KEYS){ const el=document.getElementById("xi-"+k); if(el) el.value=(o&&o[k]!=null)?o[k]:""; } }
+function xlCalc(){
+  const v=xlV(); let h=`<thead><tr><th>Kategori</th><th>Gösterge</th><th>Sonuç</th><th>Okuma / eşik</th><th>Formül</th></tr></thead><tbody>`;
+  const C=fundCompute(fundReadForm()), nn=x=>x==null?NaN:x, M={};
+  for(const [c,a,f,m,e,fo,t] of XL_ROWS.concat(xlExtra(C,nn))){
+    let r; try{ r=f(v); }catch(x){ r=NaN; }
+    const ok=isFinite(r), tg=ok&&t?XT[t](r):""; M[a]={v:ok?XF[m](r):"—",tg,e,r:ok?r:NaN};
+    h+=`<tr><td style="text-align:left">${c}</td><td style="text-align:left">${a}</td><td class="num">${ok?XF[m](r):"—"}${tg?` <span class="tag ${tg}">${XL_LB[tg]}</span>`:""}</td><td style="text-align:left; color:var(--tx2)">${e}</td><td style="text-align:left; color:var(--tx2)">${fo}</td></tr>`;
+  }
+  const box=XL_PRI.map(([t,ns])=>`<div style="border:1px solid var(--line); border-radius:6px; padding:10px 12px; background:var(--panel2)"><div style="font-weight:500; margin-bottom:6px">${t}</div>`+ns.map(n=>{ const m=M[n]; return m?`<div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0; font-size:13px"><span title="${m.e}">${n}</span><span class="num">${m.v}${m.tg?` <span class="tag ${m.tg}">${XL_LB[m.tg]}</span>`:""}</span></div>`:""; }).join("")+`</div>`).join("");
+  document.getElementById("xlPri").innerHTML=`<div style="font-weight:500; margin-bottom:8px">Öncelikli göstergeler <span style="color:var(--tx2); font-weight:400">— önem sırasıyla; satırın üzerine gelince eşik görünür</span></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(270px,1fr))">${box}</div><div class="note" style="padding:8px 0 0">Sıra: önce "kâr gerçek mi ve nakde dönüyor mu?", sonra "şirket sağlam mı?", en son "fiyat makul mü?". Bankalarda cari oran, borç oranları, Altman ve FAVÖK çarpanları anlamsız; PD/DD, ROE ve net faiz marjına bak. Holdinglerde F/K yerine net aktif değere göre iskonto bakılır.</div>`;
+  document.getElementById("xlTable").innerHTML=h+"</tbody>";
+  xlWarn(v,M,xlTrend());
+}
+/* ---------- Yıllık trend + otomatik uyarılar + veri kontrolü ---------- */
+const TR_IN=`sat|Net satışlar (TL)
+smm|Satılan malın maliyeti – SMM (TL)
+favok|FAVÖK (TL)
+ebit|EBIT / faaliyet kârı (TL)
+nk|Net kâr (TL)
+faiz|Faiz gideri (TL)
+cfo|İşletme nakit akışı – CFO (TL)
+capex|Yatırım harcaması – Capex (TL)
+donen|Dönen varlıklar (TL)
+stok|Stoklar (TL)
+alacak|Ticari alacaklar (TL)
+nakit|Nakit + nakit benzerleri (TL)
+kvy|KV yükümlülükler (TL)
+tb|Ticari borçlar (TL)
+aktif|Toplam varlıklar (TL)
+oz|Özkaynaklar (TL)
+fb|Finansal borçlar (TL)
+ihrac|Yeni hisse ihracı var mı? (1=Evet, 0=Hayır)`.split("\n").map(l=>l.split("|"));
+const TR_KEYS=TR_IN.map(x=>x[0]), TR_N=5, TR_Y0=[2021,2022,2023,2024,2025];
+const TR_LIST=[["CFO / Net Kâr",1],["FCF Marjı",1],["ROE",1],["ROA",1],["Net Kâr Marjı",1],["Aktif Devir Hızı",1],["Finansal Kaldıraç",0],["Net Borç / FAVÖK",-1],["Faiz Karşılama",1],["Borç / Özkaynak",-1],["Brüt Kâr Marjı",1],["FAVÖK Marjı",1],["Satış Büyümesi",1],["Net Kâr Büyümesi",1],["Cari Oran",1],["CCC (Gün)",-1],["DSO (Gün)",-1],["DIO (Gün)",-1],["Piotroski F-Score",1]];
+const TR_WARN=new Set(["CFO / Net Kâr","FCF Marjı","ROE","Net Kâr Marjı","FAVÖK Marjı","Net Borç / FAVÖK","Faiz Karşılama","Cari Oran","CCC (Gün)","DSO (Gün)","DIO (Gün)"]);
+function trInit(){
+  const I=id=>`<input type="number" step="any" inputmode="decimal" id="${id}" style="min-width:104px">`;
+  let h=`<thead><tr><th style="text-align:left">Kalem (dönem sonu, yıllık)</th>${TR_Y0.map((y,i)=>`<th>${I("tr-y"+i)}</th>`).join("")}</tr></thead><tbody>`;
+  for(const [k,l] of TR_IN) h+=`<tr><td style="text-align:left">${l}</td>${TR_Y0.map((y,i)=>`<td>${I(`tr-${k}-${i}`)}</td>`).join("")}</tr>`;
+  document.getElementById("trIn").innerHTML=h+"</tbody>"; trWrite(null);
+}
+function trWrite(t){
+  TR_Y0.forEach((y,i)=>{ document.getElementById("tr-y"+i).value=(t&&t.y&&t.y[i])||y; });
+  for(const k of TR_KEYS) for(let i=0;i<TR_N;i++) document.getElementById(`tr-${k}-${i}`).value=(t&&t.v&&t.v[k]&&t.v[k][i]!=null)?t.v[k][i]:"";
+}
+function trRead(){
+  const v={}; let any=false;
+  for(const k of TR_KEYS){ v[k]=[]; for(let i=0;i<TR_N;i++){ const s=document.getElementById(`tr-${k}-${i}`).value; v[k].push(s); if(s!=="") any=true; } }
+  return any?{y:TR_Y0.map((y,i)=>document.getElementById("tr-y"+i).value),v}:null;
+}
+function xSpark(a){
+  const f=a.filter(isFinite); if(f.length<2) return "";
+  const mn=Math.min(...f), r=(Math.max(...f)-mn)||1;
+  const pts=a.map((x,i)=>isFinite(x)?`${(1+i*78/(a.length-1)).toFixed(1)},${(17-(x-mn)/r*16).toFixed(1)}`:null).filter(Boolean).join(" ");
+  return `<svg width="80" height="18" style="vertical-align:middle"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg>`;
+}
+function xlTrend(){
+  const g=id=>document.getElementById(id).value;
+  const ys=TR_Y0.map((y,i)=>g("tr-y"+i)||String(y));
+  const D=ys.map((y,i)=>{ const o={}; for(const k of TR_KEYS) o[k]=fxNum(g(`tr-${k}-${i}`)); return o; });
+  const V=D.map((d,i)=>{ const q=D[i-1]||{}; return Object.assign({},d,{alacak0:q.alacak,stok0:q.stok,tb0:q.tb,aktif0:q.aktif,oz0:q.oz,sat0:q.sat,nk0:q.nk}); });
+  const call=(n,v)=>{ try{ const r=XL_ROWS.find(x=>x[1]===n)[2](v); return isFinite(r)?r:NaN; }catch(e){ return NaN; } };
+  const pio=i=>{ const q=V[i-1], d=D[i-1]; if(!q||!d) return NaN;
+    return xPio(Object.assign({},V[i],{roa0:call("ROA",q),bta0:call("Toplam Borç Oranı",q),cari0:call("Cari Oran",q),bm0:call("Brüt Kâr Marjı",q),ad0:call("Aktif Devir Hızı",q),cfo0:d.cfo})); };
+  const rows=TR_LIST.map(([n,dir])=>{
+    const P=n==="Piotroski F-Score", m=P?"s":XL_ROWS.find(x=>x[1]===n)[3];
+    const vals=V.map((v,i)=>P?pio(i):call(n,v)), ok=vals.filter(isFinite);
+    let diff=NaN, tag="", lbl="";
+    if(ok.length>=2){
+      const a=ok[0], b=ok[ok.length-1]; diff=b-a; const up=diff>0?"↑ ":"↓ ";
+      if(Math.abs(diff)/Math.max(Math.abs(a),Math.abs(b),1e-9)<.05){ tag="orta"; lbl="YATAY"; }
+      else if(dir===0){ tag="ok"; lbl=diff>0?"↑ ARTIYOR":"↓ AZALIYOR"; }
+      else if(diff*dir>0){ tag="iyi"; lbl=up+"İYİLEŞİYOR"; } else { tag="kotu"; lbl=up+"BOZULUYOR"; }
+    }
+    return {n,m,vals,diff,tag,lbl,a:ok[0],b:ok[ok.length-1]};
+  });
+  const nz=D.filter(d=>TR_KEYS.some(k=>isFinite(d[k]))).length;
+  const fd=(m,d)=>!isFinite(d)?"—":(d>0?"+":"")+(m==="p"?fnum(d*100,1)+" puan":m==="g"?fnum(d,0)+" gün":fnum(d,m==="s"?0:2));
+  const out=document.getElementById("trOut");
+  out.innerHTML = nz<2 ? `<div class="note" style="padding:0">Trend için en az iki yılın rakamlarını gir.</div>` :
+   `<table><thead><tr><th style="text-align:left">Gösterge</th>${ys.map(y=>`<th>${esc(y)}</th>`).join("")}<th>Grafik</th><th>Değişim</th><th>Yön</th></tr></thead><tbody>`+
+   rows.map(r=>`<tr><td style="text-align:left">${r.n}</td>${r.vals.map(x=>`<td class="num">${isFinite(x)?XF[r.m](x):"—"}</td>`).join("")}<td>${xSpark(r.vals)}</td><td class="num">${fd(r.m,r.diff)}</td><td>${r.tag?`<span class="tag ${r.tag}">${r.lbl}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
+  return {rows,V,ys,nz};
+}
+function xlCheck(v,pre=""){
+  const m=[], f=isFinite, P=(c,s)=>{ if(c) m.push(pre+s); };
+  P(f(v.aktif)&&f(v.oz)&&v.oz>v.aktif,"Özkaynak toplam varlıktan büyük.");
+  P(f(v.aktif)&&f(v.donen)&&v.donen>v.aktif,"Dönen varlıklar toplam varlıktan büyük.");
+  P(f(v.donen)&&["stok","alacak","nakit"].some(k=>f(v[k])&&v[k]>v.donen),"Stok, alacak veya nakitten biri dönen varlıklardan büyük.");
+  P(f(v.yuk)&&f(v.fb)&&v.fb>v.yuk,"Finansal borç toplam yükümlülükten büyük.");
+  P(f(v.yuk)&&f(v.kvy)&&v.kvy>v.yuk,"KV yükümlülükler toplam yükümlülükten büyük.");
+  P(f(v.aktif)&&f(v.yuk)&&f(v.oz)&&v.aktif>0&&Math.abs(v.aktif-v.yuk-v.oz)/v.aktif>.02,"Toplam varlık, yükümlülük + özkaynak toplamından %2’den fazla farklı; bilanço kalemlerini kontrol et.");
+  P(f(v.sat)&&f(v.nk)&&v.nk>v.sat,"Net kâr net satıştan büyük.");
+  P(f(v.favok)&&f(v.ebit)&&v.ebit>v.favok,"EBIT FAVÖK’ten büyük (FAVÖK = EBIT + amortisman olmalı).");
+  P(f(v.sat)&&f(v.favok)&&v.favok>v.sat,"FAVÖK net satıştan büyük.");
+  P(f(v.sat)&&f(v.smm)&&v.smm>v.sat,"SMM net satıştan büyük (brüt zarar görünüyor); doğru mu?");
+  P(["stok","alacak","nakit","donen","kvy","aktif","sat"].some(k=>f(v[k])&&v[k]<0),"Negatif olmaması gereken bir kalem negatif girilmiş.");
+  P(f(v.ihrac)&&v.ihrac!==0&&v.ihrac!==1,"Yeni hisse ihracı yalnızca 0 veya 1 olmalı.");
+  for(const [k,l] of [["rf","Risksiz faiz"],["vo","Vergi oranı"],["kd","Borçlanma maliyeti"]]) P(f(v[k])&&v[k]>0&&v[k]<.01,`${l} %${fnum(v[k]*100,2)} olarak girilmiş; yüzde olarak yazılır (ör. %37 için 37). Bilerek yazdıysan sorun yok.`);
+  return m;
+}
+const XL_WR=[
+["CFO / Net Kâr",x=>x<.7,x=>`Kâr nakde yeterince dönmüyor: CFO / Net Kâr ${fnum(x,2)}x (eşik 0,7). Alacak ve stok artışına, tek seferlik gelirlere bak.`,"o"],
+["FCF",x=>x<0,x=>`Serbest nakit akışı negatif (${fnum(x,0)}). Capex’in bakım mı büyüme mi olduğunu ayır; finansman ihtiyacını kontrol et.`,"o"],
+["ROIC – WACC",x=>x<0,x=>`ROIC, WACC’in ${fnum(-x*100,1)} puan altında. Yüksek faiz ortamında birçok şirkette çıkabilir; trend ve emsalle oku.`,"i"],
+["Net Borç / FAVÖK",x=>x>3,x=>`Net borç FAVÖK’ün ${fnum(x,1)} katı (eşik 3). Faiz, kur ve vade riskini kontrol et.`,"o"],
+["Faiz Karşılama",x=>x<2,x=>`Faaliyet kârı faizi ${fnum(x,1)} kez karşılıyor (${x<1?"faiz ödemeye yetmiyor":"zayıf"}).`,x=>x<1?"k":"o"],
+["Borç / Özkaynak",x=>x>2,x=>`Borç / özkaynak ${fnum(x,2)}x: kaldıraç çok yüksek.`,"o"],
+["Net döviz pozisyonu",x=>x<0,x=>`Açık döviz pozisyonu (${fnum(x,0)}): kur artışında zarar riski.`,"o"],
+["Cari Oran",x=>x<1,x=>`Cari oran ${fnum(x,2)}x: kısa vadeli borçlar dönen varlıklarla karşılanmıyor.`,"k"],
+["Asit-Test",x=>x<.7,x=>`Asit-test ${fnum(x,2)}x: stok satılmadan borç ödeme gücü zayıf.`,"o"],
+["DSO (Gün)",x=>x>75,x=>`Tahsilat süresi ${fnum(x,0)} gün (eşik 75): alacak kalitesine bak.`,"o"],
+["DIO (Gün)",x=>x>120,x=>`Stok ${fnum(x,0)} gün işletmede kalıyor (eşik 120): stok kalitesine ve talebe bak.`,"o"],
+["CCC (Gün)",x=>x>90,x=>`Nakit dönüşüm süresi ${fnum(x,0)} gün (eşik 90): işletme sermayesi nakdi uzun süre bağlıyor.`,"o"],
+["Altman Z-Score",x=>x<1.81,x=>`Altman Z ${fnum(x,2)} (riskli bölge, <1,81). Yalnızca imalat için uygundur; banka ve holdingde kullanma.`,"o"],
+["Piotroski F-Score",x=>x<=3,x=>`Piotroski ${fnum(x,0)}/9: zayıf kalite sinyali.`,"o"],
+["Beneish M-Score",x=>x>-1.78,x=>`Beneish M ${fnum(x,2)} (−1,78 üstü): muhasebe kalitesi için inceleme sinyali; kanıt değildir.`,"o"],
+["Temettü Verimi",x=>x>.08,x=>`Temettü verimi %${fnum(x*100,1)}: çok yüksek verim sürdürülemez dağıtımın ya da düşen fiyatın işareti olabilir.`,"i"],
+["Temettü Dağıtım Oranı",x=>x>.8,x=>`Kârın %${fnum(x*100,0)}’i dağıtılıyor: büyüme ve borç için az kaynak kalıyor.`,"o"],
+["Ne kadar ucuz / pahalı",x=>x<-.2,x=>`Sektör çarpanlarına göre adil fiyatın %${fnum(-x*100,0)} üzerinde işlem görüyor (göreli tahmin).`,"i"],
+["ROE − reel faiz (puan)",x=>x<0,x=>`ROE, reel faizin ${fnum(-x,1)} puan altında.`,"o"],
+["PEG",x=>x>2,x=>`PEG ${fnum(x,2)}: büyümeye göre pahalı olabilir (tahmin kalitesine bağlı).`,"i"]
+];
+function xlWarn(v,M,T){
+  const el=document.getElementById("xlWarn"), N=n=>M[n]?M[n].r:NaN, fin=isFinite;
+  if(!(XL_KEYS.some(k=>fin(v[k]))||T.nz>0)){ el.innerHTML=`<div class="note" style="padding:0">Rakamları girince veri kontrolü ve otomatik uyarılar burada görünür.</div>`; return; }
+  const veri=xlCheck(v);
+  T.V.forEach((y,i)=>{ if(TR_KEYS.some(k=>fin(y[k]))) veri.push(...xlCheck(y,T.ys[i]+": ")); });
+  const fk=N("F/K (P/E)"), pdd=N("PD/DD (P/B)"), roe=N("ROE"), z=N("Altman Z-Score");
+  if(fk>500||pdd>200||z>50||roe>1.5) veri.push(`Bazı sonuçlar olağandışı büyük (${[fk>500&&"F/K "+fnum(fk,0),pdd>200&&"PD/DD "+fnum(pdd,0),z>50&&"Altman "+fnum(z,0),roe>1.5&&"ROE %"+fnum(roe*100,0)].filter(Boolean).join(", ")}). Fiyat × hisse sayısı ile finansal tablo rakamlarının aynı birimde (TL / bin TL / milyon TL) olduğunu kontrol et.`);
+  let ev=0, sk=0; const it=[];
+  for(const [n,t,m,s] of XL_WR){ const x=N(n); if(!fin(x)){ sk++; continue; } ev++; if(t(x)) it.push([typeof s==="function"?s(x):s,m(x)]); }
+  for(const r of T.rows) if(r.tag==="kotu"&&TR_WARN.has(r.n)) it.push(["o",`${r.n} yıllar içinde bozuluyor (${XF[r.m](r.a)} → ${XF[r.m](r.b)}). Nedenini dipnotlarla araştır.`]);
+  const ord={k:0,o:1,i:2}, TG={k:["kotu","KRİTİK"],o:["orta","DİKKAT"],i:["ok","BİLGİ"]};
+  it.sort((a,b)=>ord[a[0]]-ord[b[0]]);
+  const line=(tg,t)=>`<div style="padding:3px 0; font-size:13px"><span class="tag ${tg[0]}">${tg[1]}</span> ${t}</div>`, dim=t=>`<span style="color:var(--tx2); font-weight:400">— ${t}</span>`;
+  el.innerHTML=`<div style="font-weight:500; margin-bottom:6px">Veri kontrolü ${dim(veri.length?veri.length+" olası girdi hatası":"belirgin bir sorun görünmüyor")}</div>${veri.map(t=>line(["orta","VERİ"],t)).join("")}`+
+   `<div style="font-weight:500; margin:12px 0 6px">Otomatik uyarılar ${dim(it.length+" uyarı · "+ev+" kural değerlendirildi"+(sk?", "+sk+" kural için girdi eksik":""))}</div>${it.map(x=>line(TG[x[0]],x[1])).join("")}`+
+   `<div class="note" style="padding:6px 0 0">Uyarılar karar sinyali değil, inceleme başlangıç noktasıdır; sektöre göre yorumla (banka ve holdingde birçok kural geçerli değildir).</div>`;
+}
+function xlInit(){
+  trInit();
+  let h=""; for(const l of XL_IN.split("\n")){
+    if(l[0]==="#") h+=`<div style="grid-column:1/-1; font-weight:500; margin-top:8px">${l.slice(1)}</div>`;
+    else { const [k,t]=l.split("|"); h+=`<div><label for="xi-${k}">${t}</label><input type="number" step="any" inputmode="decimal" id="xi-${k}"></div>`; }
+  }
+  document.getElementById("xlIn").innerHTML=h;
+  document.getElementById("xlSample").addEventListener("click",()=>{ xlWrite(Object.fromEntries(Object.entries(XL_SMP).map(([k,x])=>[k, XL_PCT.has(k)?+(x*100).toFixed(4):x]))); xlCalc(); });
+  document.getElementById("xlClear").addEventListener("click",()=>{ xlWrite({}); xlCalc(); });
+  xlCalc();
+}
+
+/* ---------- Otomatik fiyat çekme ---------- */
+const fetchStatus={};
+function priceMapRender(){
+  const wInput=document.getElementById("workerUrlInput");
+  if(wInput && document.activeElement!==wInput) wInput.value=(S.settings && S.settings.workerUrl) || "";
+  const syms=compute().open.map(r=>r.s).sort();
+  let h=`<thead><tr><th>Hisse</th><th>Yahoo kodu</th><th>Fiyat</th><th>Durum</th></tr></thead><tbody>`;
+  if(!syms.length) h+=`<tr><td colspan="4" class="empty">Önce portföye hisse ekle.</td></tr>`;
+  for(const s of syms){
+    const code = resolveFetchCode(s);
+    const st = fetchStatus[s];
+    h+=`<tr><td class="sym">${esc(s)}</td>
+      <td><input type="text" class="pmInput" data-sym="${esc(s)}" value="${esc(code)}" style="width:120px"></td>
+      <td class="num">${S.prices[s]!=null?money(S.prices[s]):"—"}</td>
+      <td style="color:${st?(st.ok?'#2ecc71':'#e74c3c'):'var(--tx2)'}">${st?esc(st.txt):"—"}</td></tr>`;
+  }
+  document.getElementById("priceMapTable").innerHTML=h+"</tbody>";
+  document.querySelectorAll(".pmInput").forEach(inp=>{
+    inp.addEventListener("change",()=>{
+      const s=inp.dataset.sym;
+      mutate(()=>{ if(!S.fetchMap) S.fetchMap={}; S.fetchMap[s]=inp.value.trim(); });
+    });
+  });
+}
+// Panel içindeki bazı hisse anahtarları gerçek BIST koduyla birebir aynı değil
+// (ör. "ASELSAN" yazılmış ama borsa kodu ASELS'tir). fetchMap'te elle bir kod
+// girilmemişse önce bu tablo, sonra da eski "kod+.IS" varsayımı denenir.
+const DEFAULT_CODES={ ASELSAN:"ASELS.IS", AKBANK:"AKBNK.IS", GLRK:"GLRMK.IS" };
+function resolveFetchCode(s){
+  const manual=S.fetchMap && S.fetchMap[s];
+  if(manual) return manual;
+  if(DEFAULT_CODES[s]) return DEFAULT_CODES[s];
+  return s+".IS";
+}
+async function fetchWithTimeout(url, ms){
+  const ctrl=new AbortController();
+  const id=setTimeout(()=>ctrl.abort(), ms);
+  try{ return await fetch(url, {signal:ctrl.signal}); }
+  finally{ clearTimeout(id); }
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+function workerBaseUrl(){
+  return (S.settings && S.settings.workerUrl) || "https://panel.mert-akkus27.workers.dev";
+}
+async function fetchPrice(code, attempt){
+  attempt = attempt || 1;
+  const base=workerBaseUrl();
+  if(!base) throw new Error("Worker adresi ayarlanmamış (Ayarlar sekmesinden ekle)");
+  let res;
+  try{
+    res=await fetchWithTimeout(base.replace(/\/$/,"")+"/?symbol="+encodeURIComponent(code), 15000);
+  }catch(e){
+    // Tek seferlik otomatik yeniden deneme: worker'a ilk denemede ulaşılamaması
+    // (soğuk başlama, geçici ağ hatası) çoğunlukla ikinci denemede düzeliyor.
+    if(attempt<2){ await sleep(800); return fetchPrice(code, attempt+1); }
+    throw e.name==="AbortError" ? new Error("zaman aşımı") : new Error("worker'a ulaşılamadı: "+e.message);
+  }
+  let data;
+  try{ data=await res.json(); }
+  catch(e){ throw new Error("worker geçersiz cevap verdi (HTTP "+res.status+")"); }
+  if(!res.ok || data.error) throw new Error(data && data.error ? data.error : ("HTTP "+res.status));
+  if(data.price==null || isNaN(Number(data.price))) throw new Error("fiyat alanı boş döndü");
+  return Number(data.price);
+}
+const FETCH_CONCURRENCY=2; // worker'ı aynı anda bombalamamak için hisseleri 2'şerli grup halinde çek
+async function fetchSymbolList(syms){
+  const status=document.getElementById("fetch-status");
+  status.textContent="Çekiliyor... (0/"+syms.length+")";
+  let ok=0, fail=0, lastErr="", done=0;
+  let idx=0;
+  async function worker(){
+    while(idx<syms.length){
+      const s=syms[idx++];
+      const code=resolveFetchCode(s);
+      try{
+        const p=await fetchPrice(code);
+        S.prices[s]=p;
+        fetchStatus[s]={ok:true,txt:"OK"};
+        ok++;
+      }catch(e){
+        const msg=(e&&e.message?e.message:String(e));
+        fetchStatus[s]={ok:false,txt:"Hata: "+msg};
+        lastErr=msg;
+        fail++;
+      }
+      done++;
+      status.textContent="Çekiliyor... ("+done+"/"+syms.length+")";
+      priceMapRender();
+      await sleep(300); // proxy'lere art arda gitmemek için küçük bekleme
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(FETCH_CONCURRENCY, syms.length)}, worker));
+  save(); render();
+  status.textContent=`Bitti — ${ok} başarılı, ${fail} hata.`+(fail?` (örnek hata: ${lastErr})`:"");
+  const retryBtn=document.getElementById("btnRetryFailed");
+  if(retryBtn) retryBtn.hidden = fail===0;
+}
+document.getElementById("btnFetchPrices").addEventListener("click", ()=>{
+  const syms=[...new Set(S.tx.map(x=>x.s))].sort();
+  fetchSymbolList(syms);
+});
+document.getElementById("btnRetryFailed")?.addEventListener("click", ()=>{
+  const failed=Object.keys(fetchStatus).filter(s=>fetchStatus[s] && !fetchStatus[s].ok);
+  if(!failed.length) return;
+  fetchSymbolList(failed);
+});
+
+/* ---------- Supabase senkron ---------- */
+// Bu iki değer gizli değildir (herkese açık anahtar). Veriyi asıl koruyan, Supabase'deki RLS kuralı + giriş şifresidir.
+const SUPABASE_URL = "https://cknctalhnatjlkkpyvcd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6Ms8ptYrjVHv-4Tj6GOCVQ_XSOdaRBC";   // Publishable key (eski adıyla anon key)
+
+const SB_TABLE="portfoy", LS_KEY="portfoy-v1", LS_DIRTY="portfoy-dirty", LS_LINK="portfoy-linked";
+let sb=null, sbUser=null, sbChan=null, sbBusy=false, sbAgain=false, sbExplicitOut=false, pendingRemote=null;
+const sbConfigured=()=>!/PROJE-ID/.test(SUPABASE_URL) && !/PASTE/.test(SUPABASE_KEY);
+const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+const lsDel=k=>{ try{ localStorage.removeItem(k); }catch(e){} };
+const norm=st=>Object.assign(clone(SEED), st);
+
+// jsonb anahtar sırasını değiştirir; karşılaştırma için sıradan bağımsız string üret
+function stable(v){
+  if(Array.isArray(v)) return "["+v.map(stable).join(",")+"]";
+  if(v && typeof v==="object") return "{"+Object.keys(v).sort().filter(k=>v[k]!==undefined).map(k=>JSON.stringify(k)+":"+stable(v[k])).join(",")+"}";
+  return JSON.stringify(v);
+}
+function setSync(kind, txt){
+  const el=document.getElementById("syncstate"); if(!el) return;
+  el.innerHTML = kind ? `<span class="syncdot ${kind}"></span>${esc(txt)}` : "";
+}
+function sbInfo(){
+  const el=document.getElementById("sb-info");
+  const off=!sbConfigured() || !sb;
+  for(const id of ["btnSbPull","btnSbPush","btnSbOut"]) document.getElementById(id).disabled = off || !sbUser;
+  if(!sbConfigured()) el.textContent="Supabase henüz ayarlanmadı. Dosyanın başındaki SUPABASE_URL ve SUPABASE_KEY değerlerini doldur; o zamana kadar veri sadece bu cihazda tutulur.";
+  else if(!sb) el.textContent="Supabase kütüphanesi yüklenemedi (internet yok olabilir). Veri şimdilik sadece bu cihazda tutuluyor.";
+  else if(!sbUser) el.textContent="Giriş yapılmadı.";
+  else el.innerHTML="Giriş yapan: <b>"+esc(sbUser.email||"")+"</b>";
+}
+
+// Buluttan gelen durumu uygula. Kullanıcı bir kutuya yazıyorsa bitene kadar bekletir.
+function applyRemote(st, immediate){
+  const ns=norm(st);
+  if(stable(ns)===stable(S)) return false;
+  const ae=document.activeElement;
+  if(!immediate && ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)){ pendingRemote=ns; return false; }
+  S=ns; pendingRemote=null;
+  lsSet(LS_KEY, JSON.stringify(S));
+  render(); flag("Buluttan güncellendi");
+  return true;
+}
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(pendingRemote) applyRemote(pendingRemote); },60));
+
+async function sbPush(){
+  if(!sb || !sbUser) return;
+  if(sbBusy){ sbAgain=true; return; }
+  sbBusy=true;
+  try{
+    do{
+      sbAgain=false;
+      const {error}=await sb.from(SB_TABLE).upsert({user_id:sbUser.id, state:clone(S), updated_at:new Date().toISOString()},{onConflict:"user_id"});
+      if(error) throw error;
+      if(!sbAgain) lsDel(LS_DIRTY);
+    }while(sbAgain);
+    setSync("ok","Buluta kaydedildi"); flag("Buluta kaydedildi");
+  }catch(e){
+    setSync("bad","Buluta gitmedi · cihazda duruyor");
+    flag("Buluta kaydedilemedi");
+  }finally{ sbBusy=false; }
+}
+
+async function sbFetch(){
+  const {data,error}=await sb.from(SB_TABLE).select("state").eq("user_id",sbUser.id).maybeSingle();
+  if(error) throw error;
+  return data;
+}
+
+// Giriş sonrası ilk yükleme
+async function sbLoad(){
+  try{
+    const data=await sbFetch();
+    const dirty=lsGet(LS_DIRTY)==="1";
+    const linked=lsGet(LS_LINK)===sbUser.id;
+    if(!data){ await sbPush(); }                       // bulutta hiç veri yok: bu cihazdakini yaz
+    else if(dirty){ await sbPush(); }                  // çevrimdışıyken yapılan değişiklikler var
+    else if(!linked && stable(norm(data.state))!==stable(S) && stable(S)!==stable(SEED)){
+      // bu cihaz ilk kez bağlanıyor ve verisi buluttakinden farklı: sessizce ezme, sor
+      if(confirm("Bu cihazdaki veri buluttakinden farklı.\n\nTamam = buluttaki veriyi kullan\nİptal = bu cihazdaki veriyi buluta yaz")) applyRemote(data.state,true);
+      else { lsSet(LS_DIRTY,"1"); await sbPush(); }
+    }
+    else applyRemote(data.state,true);
+    lsSet(LS_LINK, sbUser.id);
+    setSync("ok","Bulut bağlı");
+  }catch(e){ setSync("bad","Bulut okunamadı"); flag("Buluttan okunamadı"); }
+}
+
+// Uygulama tekrar öne gelince / elle yenilenince en güncel hali çek
+async function sbPull(manual){
+  if(!sb || !sbUser || sbBusy) return;
+  if(lsGet(LS_DIRTY)==="1"){ sbPush(); return; }
+  try{
+    const data=await sbFetch();
+    if(data){ const ch=applyRemote(data.state, !!manual); if(manual && !ch) flag("Zaten güncel"); }
+    setSync("ok","Bulut bağlı");
+  }catch(e){ setSync("bad","Bulut okunamadı"); if(manual) flag("Buluttan okunamadı"); }
+}
+
+function sbSubscribe(){
+  if(sbChan){ sb.removeChannel(sbChan); sbChan=null; }
+  sbChan=sb.channel("portfoy-"+sbUser.id)
+    .on("postgres_changes",{event:"*",schema:"public",table:SB_TABLE,filter:"user_id=eq."+sbUser.id},pl=>{
+      if(pl.new && pl.new.state) applyRemote(pl.new.state);
+    })
+    .subscribe(status=>{
+      if(status==="SUBSCRIBED") setSync("ok","Bulut bağlı · canlı");
+      else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT") setSync("bad","Canlı bağlantı yok");
+    });
+}
+
+async function sbSignedIn(user){
+  if(sbUser && sbUser.id===user.id){ sbUser=user; return; }   // token yenilemesi vb.
+  const prev=lsGet(LS_LINK);
+  if(prev && prev!==user.id){                          // bu cihazdaki kopya başka bir hesaba ait: karışmasın
+    lsDel(LS_DIRTY); S=clone(SEED); lsSet(LS_KEY, JSON.stringify(S)); render();
+  }
+  sbUser=user;
+  document.getElementById("gate").hidden=true;
+  sbInfo(); setSync("busy","Bağlanıyor…");
+  await sbLoad();
+  sbSubscribe();
+}
+function sbSignedOut(){
+  if(sbChan){ sb.removeChannel(sbChan); sbChan=null; }
+  sbUser=null;
+  if(sbExplicitOut){                       // sadece bilerek çıkışta cihazdaki kopyayı sil
+    sbExplicitOut=false;
+    lsDel(LS_KEY); lsDel(LS_DIRTY); lsDel(LS_LINK);
+    S=clone(SEED); render();
+  }
+  document.getElementById("gate").hidden=false;
+  setSync("",""); sbInfo();
+}
+
+function sbInit(){
+  sbInfo();
+  if(!sbConfigured()) return;
+  if(!window.supabase){ setSync("bad","Çevrimdışı · yerel kayıt"); return; }
+  sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+  sbInfo();
+  // callback içinde doğrudan supabase çağrısı yapma (kilitlenme olur), bu yüzden setTimeout
+  sb.auth.onAuthStateChange((ev, session)=>{ setTimeout(()=>{ session ? sbSignedIn(session.user) : sbSignedOut(); },0); });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) sbPull(false); });
+  window.addEventListener("online",()=>{ if(lsGet(LS_DIRTY)==="1") sbPush(); else sbPull(false); });
+}
+
+let gateMode="login";
+function setGateMode(m){
+  gateMode=m;
+  const su=m==="signup";
+  document.getElementById("lg-code-wrap").hidden=!su;
+  document.getElementById("lg-code").required=su;
+  document.getElementById("lg-pass").autocomplete=su?"new-password":"current-password";
+  document.getElementById("btnLogin").textContent=su?"Kayıt ol":"Giriş yap";
+  document.getElementById("lg-toggle").textContent=su?"Zaten hesabım var, giriş yap":"Davet kodum var, kayıt ol";
+  document.getElementById("gate-sub").textContent=su?"kayıt":"giriş";
+  document.getElementById("lg-err").textContent=""; document.getElementById("lg-ok").textContent="";
+}
+document.getElementById("lg-toggle").addEventListener("click",()=>setGateMode(gateMode==="login"?"signup":"login"));
+document.getElementById("loginForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  if(!sb) return;
+  const err=document.getElementById("lg-err"), ok=document.getElementById("lg-ok"), btn=document.getElementById("btnLogin");
+  const email=document.getElementById("lg-email").value.trim(), password=document.getElementById("lg-pass").value;
+  err.textContent=""; ok.textContent=""; btn.disabled=true;
+  const label=btn.textContent; btn.textContent="Bekleyin…";
+  let error=null, data=null;
+  if(gateMode==="signup"){
+    const code=document.getElementById("lg-code").value.trim().toUpperCase();
+    ({data,error}=await sb.auth.signUp({email, password, options:{data:{davet_kodu:code}}}));
+  } else {
+    ({error}=await sb.auth.signInWithPassword({email, password}));
+  }
+  btn.disabled=false; btn.textContent=label;
+  if(error){
+    const m=error.message||"";
+    if(/invalid login/i.test(m)) err.textContent="E-posta veya şifre yanlış.";
+    else if(/database error|davet/i.test(m)) err.textContent="Davet kodu geçersiz ya da daha önce kullanılmış.";
+    else if(/already registered|already been registered/i.test(m)) err.textContent="Bu e-posta zaten kayıtlı. Giriş yapmayı dene.";
+    else if(/at least|password/i.test(m)) err.textContent="Şifre en az 6 karakter olmalı.";
+    else if(/confirm/i.test(m) && /email/i.test(m)) err.textContent="Onay e-postası gönderilemedi. Yöneticiye haber ver.";
+    else err.textContent=(gateMode==="signup"?"Kayıt olunamadı: ":"Giriş yapılamadı: ")+m;
+  } else {
+    document.getElementById("lg-pass").value="";
+    if(gateMode==="signup" && data && !data.session) ok.textContent="Kayıt oluştu. E-posta onayı gerekiyorsa gelen kutunu kontrol et, sonra giriş yap.";
+  }
+});
+document.getElementById("btnSbPull").addEventListener("click",()=>sbPull(true));
+document.getElementById("btnSbPush").addEventListener("click",async ()=>{
+  if(!sbUser) return;
+  if(!confirm("Buluttaki veri, bu cihazdaki veriyle değiştirilecek. Devam?")) return;
+  lsSet(LS_DIRTY,"1"); await sbPush();
+});
+document.getElementById("btnSbOut").addEventListener("click",async ()=>{
+  if(!sbUser) return;
+  if(!confirm("Çıkış yapılsın mı? Bu cihazdaki yerel kopya silinir, veri bulutta durur.")) return;
+  if(lsGet(LS_DIRTY)==="1"){
+    await sbPush();
+    if(lsGet(LS_DIRTY)==="1"){ alert("Buluta gönderilemeyen değişiklikler var. İnternet bağlantısını kontrol edip tekrar dene."); return; }
+  }
+  sbExplicitOut=true;
+  await sb.auth.signOut();
+});
+
+/* ---------- Kalıcılık ---------- */
+let saveTimer=null;
+function save(){
+  pendingRemote=null;                       // kullanıcı bir şey değiştirdi: bekleyen bulut verisi artık eski
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    lsSet(LS_KEY, JSON.stringify(S));
+    if(sb && sbUser){ lsSet(LS_DIRTY,"1"); sbPush(); }
+    else flag("Bu cihaza kaydedildi");
+  },400);
+}
+function flag(msg){
+  const el=document.getElementById("saveflag");
+  el.textContent=msg;
+  setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; }, 2500);
+}
+function mutate(fn){ fn(); render(); save(); }
+
+/* ---------- Olaylar ---------- */
+document.getElementById("tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-tab]"); if(!b) return;
+  for(const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t===b));
+  for(const s of document.querySelectorAll("section[id^=tab-]")) s.hidden = s.id!=="tab-"+b.dataset.tab;
+});
+document.addEventListener("change",e=>{
+  const p=e.target.dataset.price, r=e.target.dataset.risk;
+  if(p!==undefined){ mutate(()=>{ S.prices[p]=Number(e.target.value)||0; }); }
+  else if(r!==undefined){ mutate(()=>{ S.riskPct[r]=(Number(e.target.value)||0)/100; }); }
+  else if(e.target.id==="workerUrlInput"){ mutate(()=>{ if(!S.settings) S.settings={}; S.settings.workerUrl=e.target.value.trim(); }); }
+});
+document.getElementById("txf-sym").addEventListener("change",e=>{ txFilter.sym=e.target.value; render(); });
+document.getElementById("txf-type").addEventListener("change",e=>{ txFilter.type=e.target.value; render(); });
+document.getElementById("txf-from").addEventListener("change",e=>{ txFilter.from=e.target.value; render(); });
+document.getElementById("txf-to").addEventListener("change",e=>{ txFilter.to=e.target.value; render(); });
+document.getElementById("btnTxfClear").addEventListener("click",()=>{
+  txFilter={sym:"",type:"",from:"",to:""};
+  for(const id of ["txf-sym","txf-type","txf-from","txf-to"]) document.getElementById(id).value="";
+  render();
+});
+document.addEventListener("click",e=>{
+  const d=e.target.dataset.del, wd=e.target.dataset.wdel, cd=e.target.dataset.cdel;
+  if(d){ if(confirm("Bu işlem silinsin mi?")) mutate(()=>{ S.tx=S.tx.filter(x=>x.id!==d); }); }
+  else if(wd!==undefined && e.target.hasAttribute("data-wdel")){ mutate(()=>{ S.watch.splice(Number(wd),1); }); }
+  else if(cd){
+    if(confirm(cd+" için kapanmış pozisyonun TÜM işlem geçmişi silinsin mi? Bu işlem geri alınamaz."))
+      mutate(()=>{ S.tx=S.tx.filter(x=>x.s!==cd); });
+  }
+});
+document.getElementById("btnAdd").addEventListener("click",()=>{
+  const g=id=>document.getElementById(id).value.trim();
+  const err=document.getElementById("f-err");
+  const d=g("f-d"), s=g("f-s").toUpperCase(), t=g("f-t"), lot=Number(g("f-lot")), px=Number(g("f-px")), com=Number(g("f-com")||0);
+  if(!d||!s||!(lot>0)||!(px>0)){ err.textContent="Tarih, hisse, lot ve fiyat gerekli."; return; }
+  err.textContent="";
+  mutate(()=>{
+    S.tx.push({id:"t"+Date.now()+Math.random().toString(36).slice(2,6), d, s, t, lot, px, com, note:g("f-note")});
+    if(t!=="SAT" && !S.prices[s]) S.prices[s]=px;
+    if(S.riskPct[s]===undefined) S.riskPct[s]=0.15;
+  });
+  for(const id of ["f-lot","f-px","f-note"]) document.getElementById(id).value="";
+  document.getElementById("f-com").value="0";
+  flag(s+" "+t+" kaydedildi");
+});
+document.getElementById("btnW").addEventListener("click",()=>{
+  const s=document.getElementById("w-s").value.trim().toUpperCase(); if(!s) return;
+  mutate(()=>{ S.watch.push({s, status:document.getElementById("w-st").value, target:Number(document.getElementById("w-t").value)||null, note:document.getElementById("w-n").value.trim()}); });
+  document.getElementById("w-s").value=""; document.getElementById("w-t").value=""; document.getElementById("w-n").value="";
+});
+document.getElementById("btnSaveSet").addEventListener("click",()=>{
+  mutate(()=>{
+    S.settings={
+      ...S.settings,
+      capital:Number(document.getElementById("s-cap").value)||0,
+      riskTol:(Number(document.getElementById("s-tol").value)||0)/100,
+      maxWeight:(Number(document.getElementById("s-w").value)||0)/100,
+      stopPct:(Number(document.getElementById("s-stop").value)||0)/100,
+      maxSteps:Number(document.getElementById("s-steps").value)||0,
+      costMethod:document.getElementById("s-costMethod").value
+    };
+  });
+  flag("Ayarlar kaydedildi");
+});
+document.getElementById("btnReset").addEventListener("click",()=>{
+  if(confirm("Panel boşalacak: tüm işlemler ve izleme listesi silinir. Bulut kaydın da bu boş halle güncellenir. Devam?"))
+    mutate(()=>{ S=clone(SEED); });
+});
+
+/* ---------- CSV ---------- */
+function csv(rows){ return "\uFEFF"+rows.map(r=>r.map(v=>{
+  const s=String(v==null?"":v);
+  return /[";\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}).join(";")).join("\r\n"); }
+function blobDownload(name, text){
+  const type=name.endsWith(".json")?"application/json":"text/csv;charset=utf-8";
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+}
+async function offer(name, text){
+  if(!downloads){ blobDownload(name, text); return; }
+  try{ await downloads.save({filename:name, data:text}); }
+  catch(e){ if(e&&e.code!=="cancelled") flag("İndirilemedi"); }
+}
+function portCsv(){
+  const {open,T}=compute();
+  const rows=[["Hisse","Lot","Ort. maliyet","Maliyet","Guncel fiyat","Deger","Gerceklesmemis K/Z","K/Z %","Gerceklesmis K/Z","Agirlik %"]];
+  for(const r of open) rows.push([r.s,r.lot,r.avg.toFixed(4),r.cost.toFixed(2),r.price,r.value.toFixed(2),r.unreal.toFixed(2),(r.unrealPct*100).toFixed(2),r.realized.toFixed(2),(r.weight*100).toFixed(2)]);
+  rows.push(["TOPLAM",T.lot,"",T.cost.toFixed(2),"",T.value.toFixed(2),T.unreal.toFixed(2),"",T.realized.toFixed(2),"100"]);
+  return csv(rows);
+}
+function txCsv(){
+  const rows=[["Tarih","Hisse","Islem","Lot","Fiyat","Komisyon","Net tutar","Not"]];
+  for(const x of S.tx.slice().sort((a,b)=>(a.d<b.d?-1:1))){
+    const g=x.lot*x.px, net=x.t==="SAT"?g-(x.com||0):g+(x.com||0);
+    rows.push([x.d,x.s,x.t,x.lot,x.px,x.com||0,net.toFixed(2),x.note||""]);
+  }
+  return csv(rows);
+}
+document.getElementById("btnCsvP").addEventListener("click",()=>offer("portfoy.csv",portCsv()));
+document.getElementById("btnCsvT").addEventListener("click",()=>offer("islem-kaydi.csv",txCsv()));
+document.getElementById("btnCsvT2").addEventListener("click",()=>offer("islem-kaydi.csv",txCsv()));
+document.getElementById("btnJsonOut").addEventListener("click",()=>offer("portfoy-yedek-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(S,null,2)));
+document.getElementById("btnJsonIn").addEventListener("click",()=>document.getElementById("jsonFile").click());
+document.getElementById("jsonFile").addEventListener("change", async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const obj=JSON.parse(await f.text());
+    if(!obj || !Array.isArray(obj.tx)) throw new Error("bu bir panel yedeği değil");
+    if(!confirm("Panel bu dosyadaki veriyle değiştirilecek ("+obj.tx.length+" işlem). Devam?")) return;
+    mutate(()=>{ S=norm(obj); });
+  }catch(err){ alert("Dosya okunamadı: "+err.message); }
+});
+
+/* ---------- Formül rehberi + hesaplayıcı ---------- */
+const fxF=x=>isFinite(x)?(Math.abs(x)>=1000?nf(0).format(x):nf(2).format(x)):"—";
+const fxHas=x=>isFinite(x);
+const fxPos=x=>isFinite(x)&&x>0;
+const fxRHi=(x,g,o)=>x>=g?"iyi":(x>=o?"orta":"kotu");     // büyük olan iyi
+const fxRLo=(x,g,o)=>x<g?"iyi":(x<=o?"orta":"kotu");      // küçük olan iyi (sınır orta)
+const fxRLoE=(x,g,o)=>x<=g?"iyi":(x<=o?"orta":"kotu");    // küçük olan iyi (sınır iyi)
+const fxRel=(x,s)=>{ const r=x/s; return r<0.85?"iyi":(r<=1.15?"orta":"kotu"); };  // sektöre oran
+const fxGap=g=>g>=20?"iyi":(g>-20?"orta":"kotu");                                   // adil değer / güncel fark %
+const fxRoeRate=(x,v)=>fxHas(v.reel)?(x>v.reel?"iyi":(x>0?"orta":"kotu")):fxRHi(x,15,5);
+const FX_LBL={iyi:"İYİ",orta:"ORTA",kotu:"KÖTÜ"};
+const FX_LBL_VAL={iyi:"İYİ · ucuz",orta:"ORTA · makul",kotu:"KÖTÜ · pahalı"};
+const FX_CATS=["Likidite","Kârlılık","Borçluluk","Değerleme","Temettü ve büyüme","DuPont","Firma değeri çarpanları","Kur riski","Nakit dönüşüm süresi"];
+const FX_GAP_BANDS=[
+  ["iyi","Adil değer, güncel fiyatın %20 veya daha fazla üstünde","Hesaplanan adil fiyat güncel fiyattan belirgin yüksek: sektöre göre ucuz."],
+  ["orta","−%20 ile +%20 arası","Adil fiyata yakın: makul fiyatlanmış. (Panelin özet tablosu sadece ucuz/pahalı der; burada ±%20 makul sayıldı.)"],
+  ["kotu","Adil değer, güncel fiyatın %20 veya daha fazla altında","Güncel fiyat adil fiyatın belirgin üstünde: sektöre göre pahalı."]
+];
+const FX_GAP_WARN=`Bu yöntem "sektöre göre" ucuzluğu ölçer. Sektörün kendisi pahalıysa şirket de ucuz görünebilir. Sektör F/K ve PD/DD değerlerini güncel ve aynı dönemden gir; tek başına al-sat sinyali sayma.`;
+const FX_LIST=[
+/* ===== LİKİDİTE ===== */
+{id:"cari",cat:"Likidite",ad:"Cari oran",kisa:"Kısa vadeli borçlar, kısa sürede nakde dönecek varlıklarla ödenebilir mi?",
+ formul:"Cari oran = Dönen varlıklar ÷ Kısa vadeli yabancı kaynak",sektor:true,
+ ne:"Bir yıl içinde ödenecek borçların, bir yıl içinde nakde dönebilecek varlıklarla (nakit, alacak, stok) kaç kat karşılandığını gösterir. \"Şirket yakın vadede sıkışır mı?\" sorusuna ilk bakılan rasyodur.",
+ uyari:"4-5 ve üzeri çok yüksek oran, atıl nakit ya da satılamayan stok birikimi anlamına da gelebilir. Perakende gibi nakit döngüsü hızlı sektörlerde 1 civarı normaldir.",
+ inputs:[["donen","Dönen varlıklar (TL)"],["kvyk","Kısa vadeli yabancı kaynak (TL)"]],unit:"x",
+ calc:v=>fxPos(v.kvyk)?v.donen/v.kvyk:null,steps:v=>`${fxF(v.donen)} ÷ ${fxF(v.kvyk)}`,rate:x=>fxRHi(x,2,1),
+ bands:[["iyi","≥ 2","Kısa vadeli borcun en az 2 katı dönen varlık var. Ödeme gücü rahat (panelin referansı)."],
+        ["orta","1 – 2","Borçlar karşılanıyor ama tampon dar. Stok ve alacakların kolay paraya dönüp dönmediğine bak."],
+        ["kotu","< 1","Dönen varlıklar kısa vadeli borcu karşılamıyor. Likidite baskısı var, yeniden finansmana bağımlı olabilir."]]},
+{id:"asit",cat:"Likidite",ad:"Asit-test (likit) oranı",kisa:"Stoklar hiç satılamasa bile kısa vadeli borç ödenebilir mi?",
+ formul:"Asit-test oranı = (Dönen varlıklar − Stoklar) ÷ Kısa vadeli yabancı kaynak",sektor:true,
+ ne:"Cari orandan stoku çıkarır, çünkü stok her zaman hızlı ve tam değerinden nakde dönmez. Cari oran iyi ama asit-test düşükse şirketin gücü stoka bağlı demektir.",
+ uyari:"Stok ağırlıklı sektörlerde (otomotiv, beyaz eşya, perakende) düşük çıkması olağandır; sektör ortalamasıyla kıyasla.",
+ inputs:[["donen","Dönen varlıklar (TL)"],["stok","Stoklar (TL)"],["kvyk","Kısa vadeli yabancı kaynak (TL)"]],unit:"x",
+ calc:v=>fxPos(v.kvyk)?(v.donen-v.stok)/v.kvyk:null,steps:v=>`(${fxF(v.donen)} − ${fxF(v.stok)}) ÷ ${fxF(v.kvyk)}`,rate:x=>fxRHi(x,1,0.7),
+ bands:[["iyi","≥ 1","Stok satılmasa bile kısa vadeli borçlar karşılanıyor (panelin referansı)."],
+        ["orta","0,7 – 1","Kısmen stoka bağımlı. Stok devir hızını kontrol et."],
+        ["kotu","< 0,7","Stok olmadan borç ödemek zor, likidite riski yüksek."]]},
+{id:"nakit",cat:"Likidite",ad:"Nakit oranı",kisa:"En katı test: sadece eldeki nakitle borçların ne kadarı ödenir?",
+ formul:"Nakit oranı = Hazır değerler (nakit) ÷ Kısa vadeli yabancı kaynak",
+ ne:"Yalnızca hazır değerleri (kasa, banka, likit yatırımlar) kısa vadeli borca böler. Alacaklar tahsil edilemese, stok satılamasa bile şirketin ne kadar dayanabileceğini gösterir.",
+ uyari:"Çok yüksek nakit (1 ve üzeri) her zaman iyi değildir; yüksek enflasyonda atıl nakit değer kaybeder ve sermaye verimsiz kullanılıyor olabilir.",
+ inputs:[["nakit","Hazır değerler / nakit (TL)"],["kvyk","Kısa vadeli yabancı kaynak (TL)"]],unit:"x",
+ calc:v=>fxPos(v.kvyk)?v.nakit/v.kvyk:null,steps:v=>`${fxF(v.nakit)} ÷ ${fxF(v.kvyk)}`,rate:x=>fxRHi(x,0.2,0.1),
+ bands:[["iyi","≥ 0,20","Kısa vadeli borcun %20'sinden fazlası anında ödenebilir (panelin referansı)."],
+        ["orta","0,10 – 0,20","Sınırda; alacak tahsilatına bağımlı."],
+        ["kotu","< 0,10","Nakit çok az; beklenmedik bir şokta zorlanabilir."]]},
+/* ===== KÂRLILIK ===== */
+{id:"roe",cat:"Kârlılık",ad:"Özsermaye kârlılığı (ROE)",kisa:"Ortakların koyduğu her 100 TL, yılda kaç TL kâr üretiyor?",
+ formul:"ROE = Net kâr ÷ Özkaynaklar × 100",
+ ne:"Hissedarın parasının ne kadar verimli çalıştığını gösterir. Panelin kuralı: ROE, reel piyasa faizinin üzerinde olmalı; çünkü yatırımcı, risksiz getiriden fazlasını beklemelidir. Reel faiz girilmezse genel eşik kullanılır (≥ %15 iyi, %5 – 15 orta, < %5 kötü).",
+ uyari:"Çeyreklik net kâr girdiysen 4 çeyreği toplayıp yıllıklandır, yoksa ROE olduğundan düşük çıkar. Özkaynak küçükse ya da şirket çok borçluysa ROE yapay yüksek olur; nedenini görmek için DuPont'a bak. Enflasyon muhasebesi (TMS 29) döneminde şirketler arası kıyas yanıltabilir.",
+ inputs:[["netkar","Net kâr (TL) — yıllık"],["ozkaynak","Özkaynaklar (TL)"],["reel","Reel piyasa faizi (%) — opsiyonel"]],unit:"%",
+ calc:v=>fxPos(v.ozkaynak)?v.netkar/v.ozkaynak*100:null,steps:v=>`${fxF(v.netkar)} ÷ ${fxF(v.ozkaynak)} × 100`,rate:fxRoeRate,
+ extra:(v,x)=>fxHas(v.reel)?[`Reel piyasa faizi ${fpct(v.reel,2)}; ROE bunun ${x>v.reel?"üzerinde":"altında"}.`]:[`Reel faiz girilmediği için genel eşik (%15 / %5) kullanıldı.`],
+ bands:[["iyi","> reel faiz","Özkaynak, risksiz getirinin üzerinde kâr üretiyor (reel faiz girilmezse ≥ %15)."],
+        ["orta","0 – reel faiz","Kâr var ama risksiz getirinin gerisinde; yatırımcıyı tam ödüllendirmiyor (reel faiz girilmezse %5 – 15)."],
+        ["kotu","≤ 0","Zarar var ya da özkaynak verimsiz (reel faiz girilmezse < %5)."]]},
+{id:"roa",cat:"Kârlılık",ad:"Aktif kârlılığı (ROA)",kisa:"Tüm varlıklar (borçla alınanlar dahil) ne kadar kâr üretiyor?",
+ formul:"ROA = Net kâr ÷ Toplam aktifler × 100",sektor:true,
+ ne:"ROE'den farkı borcun etkisini dışarıda bırakmasıdır. ROE yüksek ama ROA düşükse kârlılık gerçek verimlilikten değil, borçtan geliyor demektir.",
+ uyari:"Bankalar ve finans şirketlerinde ROA doğal olarak düşüktür (yaklaşık %1 – 2 normal). Aşağıdaki aralıklar sanayi/hizmet şirketleri içindir.",
+ inputs:[["netkar","Net kâr (TL) — yıllık"],["aktif","Toplam aktifler (TL)"]],unit:"%",
+ calc:v=>fxPos(v.aktif)?v.netkar/v.aktif*100:null,steps:v=>`${fxF(v.netkar)} ÷ ${fxF(v.aktif)} × 100`,rate:x=>fxRHi(x,5,2),
+ bands:[["iyi","≥ %5","Varlıklar verimli çalışıyor."],["orta","%2 – 5","Ortalama verimlilik."],["kotu","< %2","Varlıklar az kâr üretiyor ya da zarar var."]]},
+{id:"netmarj",cat:"Kârlılık",ad:"Net kâr marjı",kisa:"Her 100 TL satıştan cebe kaç TL net kâr kalıyor?",
+ formul:"Net kâr marjı = Net kâr ÷ Net satışlar × 100",sektor:true,
+ ne:"Şirketin fiyatlama gücünü ve maliyet kontrolünü gösterir. Aynı sektördeki şirketleri ve şirketin kendi geçmişini kıyaslamak için kullanılır.",
+ uyari:"Perakende, dağıtım, gıda gibi sektörlerde %2 – 5 normaldir; yazılım, ilaç gibi sektörlerde %15 ve üzeri görülür. Tek seferlik gelirler (varlık satışı, parasal kazanç, kur farkı) marjı geçici şişirebilir; faaliyet marjıyla karşılaştır.",
+ inputs:[["netkar","Net kâr (TL)"],["satis","Net satışlar (TL)"]],unit:"%",
+ calc:v=>fxPos(v.satis)?v.netkar/v.satis*100:null,steps:v=>`${fxF(v.netkar)} ÷ ${fxF(v.satis)} × 100`,rate:x=>fxRHi(x,10,5),
+ bands:[["iyi","≥ %10","Güçlü marj."],["orta","%5 – 10","Makul marj."],["kotu","< %5","Zayıf marj (zarar dahil). Sektörü normalse sorun değildir."]]},
+{id:"favokmarj",cat:"Kârlılık",ad:"FAVÖK marjı",kisa:"Faiz, vergi ve amortisman öncesi operasyonel kârlılık.",
+ formul:"FAVÖK marjı = FAVÖK ÷ Net satışlar × 100",sektor:true,
+ ne:"Borç yapısından ve vergiden bağımsız olarak asıl işin ne kadar kâr getirdiğini gösterir. Şirketleri karşılaştırmak için sık kullanılır.",
+ uyari:"FAVÖK tanımı şirketler arasında farklılaşabilir. Sermaye yatırımı ağır sektörlerde (enerji, telekom) amortisman büyük olduğundan yüksek FAVÖK marjı yanıltıcı olabilir.",
+ inputs:[["favok","FAVÖK (TL)"],["satis","Net satışlar (TL)"]],unit:"%",
+ calc:v=>fxPos(v.satis)?v.favok/v.satis*100:null,steps:v=>`${fxF(v.favok)} ÷ ${fxF(v.satis)} × 100`,rate:x=>fxRHi(x,20,10),
+ bands:[["iyi","≥ %20","Operasyonel kârlılık güçlü."],["orta","%10 – 20","Orta düzey."],["kotu","< %10","Zayıf; küçük maliyet artışı kârı eritebilir."]]},
+{id:"faaliyet",cat:"Kârlılık",ad:"Faaliyet kâr marjı",kisa:"Asıl iş faaliyetinden gelen kârlılık; finansman gelirleriyle şişmemiş hali.",
+ formul:"Faaliyet kâr marjı = Esas faaliyet kârı ÷ Net satışlar × 100",
+ ne:"Net kâr marjı bu marjdan belirgin yüksekse, kâr ana işten değil finansman geliri, parasal kazanç ya da varlık satışı gibi kalemlerden gelmiş olabilir. Net kârın \"şişip şişmediğini\" kontrol etmek için kullanılır.",
+ uyari:"Şirketlerin \"esas faaliyet kârı\" kalemi finansal tablolarda farklı yerlerde raporlanabilir; dipnotlarla doğrula.",
+ inputs:[["faaliyetKar","Esas faaliyet kârı (TL)"],["satis","Net satışlar (TL)"],["netkar","Net kâr (TL) — opsiyonel, karşılaştırma için"]],unit:"%",
+ calc:v=>fxPos(v.satis)&&fxHas(v.faaliyetKar)?v.faaliyetKar/v.satis*100:null,steps:v=>`${fxF(v.faaliyetKar)} ÷ ${fxF(v.satis)} × 100`,rate:x=>fxRHi(x,15,5),
+ extra:(v,x)=>{ if(fxPos(v.satis)&&fxHas(v.netkar)){ const nm=v.netkar/v.satis*100;
+   return [`Net kâr marjı ${fpct(nm,1)}, faaliyet marjı ${fpct(x,1)}.`, nm>x?`Net marj faaliyet marjından yüksek: kârın bir kısmı ana işten değil, finansman geliri, parasal kazanç ya da varlık satışı gibi kalemlerden gelmiş olabilir.`:`Net marj faaliyet marjının altında: normal görünüm; finansman gideri ve vergi kârı azaltıyor.`]; } return []; },
+ bands:[["iyi","≥ %15","Ana iş güçlü kâr üretiyor."],["orta","%5 – 15","Orta düzey."],["kotu","< %5","Ana iş zayıf; kâr varsa başka kalemlerden geliyor olabilir."]]},
+/* ===== BORÇLULUK ===== */
+{id:"borcoz",cat:"Borçluluk",ad:"Borç / Özkaynak",kisa:"Şirketin toplam borcu, ortakların parasının kaç katı?",
+ formul:"Borç/Özkaynak = Toplam finansal borç ÷ Özkaynaklar",sektor:true,
+ ne:"Yüksekse şirket büyük ölçüde borçla finanse ediliyor demektir; faiz artışı ve kur şoklarına daha kırılgandır.",
+ uyari:"Buraya sadece faiz taşıyan finansal borç (banka kredisi, tahvil, finansal kiralama) girilmeli; ticari borçlar/diğer yükümlülükler dahil edilirse oran yapay yüksek çıkar. Bankalar, sigorta ve holdinglerde yapısal olarak yüksektir; sadece kendi sektörüyle kıyasla. Döviz borcu varsa Kur riski bölümüne de bak.",
+ inputs:[["tborc","Toplam finansal borç (faiz taşıyan yükümlülükler, TL)"],["ozkaynak","Özkaynaklar (TL)"]],unit:"x",
+ calc:v=>fxPos(v.ozkaynak)?v.tborc/v.ozkaynak:null,steps:v=>`${fxF(v.tborc)} ÷ ${fxF(v.ozkaynak)}`,rate:x=>fxRLo(x,1,2),
+ bands:[["iyi","< 1","Borç özkaynaktan az: sağlıklı (panelin referansı)."],["orta","1 – 2","Borç özkaynağın 1-2 katı; faiz ve kur riskini izle."],["kotu","> 2","Yüksek kaldıraç; kırılgan."]]},
+{id:"netborcfavok",cat:"Borçluluk",ad:"Net borç / FAVÖK",kisa:"Şirket net borcunu kaç yılda operasyonel kârıyla kapatabilir?",
+ formul:"Net borç/FAVÖK = (Toplam finansal borç − Hazır değerler) ÷ FAVÖK",sektor:false,
+ ne:"Sonuç yaklaşık \"yıl\" olarak okunur: 2 çıkıyorsa iki yıllık FAVÖK net borcu kapatır. Borç yükünün operasyonel kâra göre ne kadar ağır olduğunu gösterir.",
+ uyari:"FAVÖK sıfır ya da negatifse hesaplanamaz (şirket zaten operasyonda kâr etmiyor). Negatif çıkması net nakit pozisyonu demektir ve olumludur.",
+ nullMsg:"FAVÖK pozitif olmalı; sıfır ya da negatifse bu oran hesaplanamaz.",
+ inputs:[["tborc","Toplam finansal borç (faiz taşıyan yükümlülükler, TL)"],["nakit","Hazır değerler / nakit (TL)"],["favok","FAVÖK (TL) — yıllık"]],unit:"x",
+ calc:v=>fxPos(v.favok)?(v.tborc-v.nakit)/v.favok:null,steps:v=>`(${fxF(v.tborc)} − ${fxF(v.nakit)}) ÷ ${fxF(v.favok)}`,rate:x=>fxRLo(x,3,5),
+ extra:(v,x)=>x<0?[`Nakit borçtan fazla: net nakit pozisyonu (olumlu).`]:[],
+ bands:[["iyi","< 3","Net borç 3 yıldan kısa sürede kapanabilir (panelin referansı). Negatifse net nakit vardır."],["orta","3 – 5","Borç yükü orta-yüksek; faiz artışına duyarlı."],["kotu","> 5","Ağır borç yükü."]]},
+{id:"faizkars",cat:"Borçluluk",ad:"Faiz karşılama oranı",kisa:"Operasyonel kâr, faiz giderini kaç kez karşılıyor?",
+ formul:"Faiz karşılama = FAVÖK ÷ Finansman gideri",
+ ne:"Borcun faizini ödemekte zorlanıp zorlanmayacağını gösterir. Faiz artışı dönemlerinde en çok izlenen rasyolardan biridir.",
+ uyari:"Yüksek faiz ortamında bu oran hızla bozulabilir; birkaç dönemlik gidişata bak. Finansman gideri kur farkı içeriyorsa dalgalı çıkabilir.",
+ inputs:[["favok","FAVÖK (TL)"],["faizgider","Finansman / faiz gideri (TL)"]],unit:"x",
+ calc:v=>fxPos(v.faizgider)?v.favok/v.faizgider:null,steps:v=>`${fxF(v.favok)} ÷ ${fxF(v.faizgider)}`,rate:x=>fxRHi(x,4,2),
+ extra:(v,x)=>x<1?[`Oran 1'in altında: FAVÖK faiz giderini bile karşılamıyor.`]:[],
+ bands:[["iyi","≥ 4","Faizi rahat ödüyor (panelin referansı)."],["orta","2 – 4","Ödüyor ama tampon sınırlı."],["kotu","< 2","Faiz yükü ağır (1'in altı: faizi bile karşılayamıyor)."]]},
+/* ===== DEĞERLEME ===== */
+{id:"fk",cat:"Değerleme",ad:"F/K (Fiyat / Kazanç)",kisa:"Hisse fiyatı, hisse başına yıllık kârın kaç katı?",
+ formul:"F/K = Hisse fiyatı ÷ Hisse başına yıllık kâr",sektor:true,val:true,
+ ne:"Yatırımın kâr üzerinden kaç yılda geri döneceğinin kaba göstergesidir. Tek başına değil, sektör F/K'sı ve büyümeyle birlikte okunur. Sektör F/K girersen ona göre (%15'ten fazla ucuz/pahalı); girmezsen genel eşiklerle değerlendirir.",
+ uyari:"Çok düşük F/K \"ucuz\" olabileceği gibi kârın geçici yüksek olduğu (tuzak) anlamına da gelebilir. Yüksek enflasyonda nominal kâr şiştiği için F/K yapay düşük görünebilir. Zarar eden şirkette F/K anlamsızdır.",
+ nullMsg:"Hisse başına kâr ve fiyat pozitif olmalı; zarar eden şirkette F/K hesaplanamaz.",
+ inputs:[["guncel","Hisse fiyatı (TL)"],["hbk","Hisse başına yıllık kâr (TL)"],["sfk","BİST/Sektör F/K — opsiyonel"]],unit:"x",
+ calc:v=>fxPos(v.hbk)&&fxPos(v.guncel)?v.guncel/v.hbk:null,steps:v=>`${fxF(v.guncel)} ÷ ${fxF(v.hbk)}`,
+ rate:(x,v)=>fxPos(v.sfk)?fxRel(x,v.sfk):fxRLoE(x,8,15),
+ extra:(v,x)=>fxPos(v.sfk)?[`Sektöre oran (Şirket F/K ÷ Sektör F/K): ${fnum(x/v.sfk,2)}. 1'in altı sektörden ucuz, üstü sektörden pahalı demektir.`]:[`Sektör F/K girilmediği için genel eşik (8 / 15) kullanıldı.`],
+ bands:[["iyi","≤ 8 (ya da sektörden %15'ten fazla ucuz)","Kâra göre ucuz görünüyor; kârın kalıcı olup olmadığını kontrol et."],["orta","8 – 15 (sektöre yakın)","Makul fiyatlanmış."],["kotu","> 15 (ya da sektörden %15'ten fazla pahalı)","Kâra göre pahalı; yüksek büyüme bunu haklı çıkarıyor mu bak (PEG)."]]},
+{id:"pddd",cat:"Değerleme",ad:"PD/DD (Piyasa değeri / Defter değeri)",kisa:"Piyasa, şirketi defter değerinin kaç katına fiyatlıyor?",
+ formul:"PD/DD = Piyasa değeri ÷ Özkaynaklar",sektor:true,val:true,
+ ne:"1'in altı, şirketin defterdeki değerinin altında işlem gördüğü anlamına gelir. ROE ile birlikte okunmalı: yüksek ROE'li şirket için yüksek PD/DD normaldir. Sektör PD/DD girersen ona göre, girmezsen genel eşiklerle değerlendirir.",
+ uyari:"Bankalarda PD/DD ana değerleme ölçüsüdür (çoğunlukla 0,5 – 2 aralığı). PD/DD < 1 ama ROE düşükse iskonto haklı olabilir.",
+ inputs:[["piyasaDeger","Piyasa değeri (TL)"],["ozkaynak","Özkaynaklar (TL)"],["spd","BİST/Sektör PD/DD — opsiyonel"]],unit:"x",
+ calc:v=>fxPos(v.piyasaDeger)&&fxPos(v.ozkaynak)?v.piyasaDeger/v.ozkaynak:null,steps:v=>`${fxF(v.piyasaDeger)} ÷ ${fxF(v.ozkaynak)}`,
+ rate:(x,v)=>fxPos(v.spd)?fxRel(x,v.spd):fxRLoE(x,1.5,3),
+ extra:(v,x)=>fxPos(v.spd)?[`Sektöre oran (Şirket PD/DD ÷ Sektör PD/DD): ${fnum(x/v.spd,2)}. 1'in altı sektörden ucuz, üstü pahalı demektir.`]:[`Sektör PD/DD girilmediği için genel eşik (1,5 / 3) kullanıldı.`],
+ bands:[["iyi","≤ 1,5 (ya da sektörden %15'ten fazla ucuz)","Defter değerine göre ucuz; ROE'nin düşük olup olmadığına bak."],["orta","1,5 – 3","Makul."],["kotu","> 3 (ya da sektörden %15'ten fazla pahalı)","Defter değerine göre pahalı; ancak yüksek ROE'yle haklı olabilir."]]},
+{id:"olmasifk",cat:"Değerleme",ad:"Olması gereken fiyat (F/K bazlı)",kisa:"Şirket, sektör F/K'sıyla işlem görse fiyatı ne olurdu?",
+ formul:"Olması gereken fiyat = (BİST/Sektör F/K ÷ Şirket F/K) × F/K hesaplanırken kullanılan fiyat",val:true,
+ ne:"Şirketin F/K'sını sektör F/K'sına çekerek \"adil\" fiyatı tahmin eder. Şirket sektörden ucuzsa hesaplanan fiyat güncelin üstünde çıkar.",
+ uyari:FX_GAP_WARN,nullMsg:"Şirket F/K, sektör F/K ve fiyat pozitif olmalı.",
+ inputs:[["sfk","BİST/Sektör F/K"],["fk","Şirket F/K"],["borsaFiyat","F/K hesaplanırken kullanılan fiyat (TL)"],["guncel","Güncel fiyat (TL) — opsiyonel, kıyas için"]],unit:"TL",
+ calc:v=>fxPos(v.fk)&&fxPos(v.sfk)&&fxPos(v.borsaFiyat)?v.sfk/v.fk*v.borsaFiyat:null,steps:v=>`(${fxF(v.sfk)} ÷ ${fxF(v.fk)}) × ${fxF(v.borsaFiyat)}`,
+ rate:(x,v)=>fxPos(v.guncel)?fxGap((x-v.guncel)/v.guncel*100):null,
+ extra:(v,x)=>fxPos(v.guncel)?[`Güncel fiyat ${fxF(v.guncel)} TL; fark ${fxF(x-v.guncel)} TL (${fpct((x-v.guncel)/v.guncel*100,1)}).`]:[`Güncel fiyat girersen ucuz/pahalı değerlendirmesi de yapılır.`],
+ bands:FX_GAP_BANDS},
+{id:"olmasipd",cat:"Değerleme",ad:"Olması gereken fiyat (PD/DD bazlı)",kisa:"Şirket, sektör PD/DD'siyle işlem görse fiyatı ne olurdu?",
+ formul:"Olması gereken fiyat = (BİST/Sektör PD/DD ÷ Şirket PD/DD) × aynı fiyat",val:true,
+ ne:"F/K bazlı yöntemin defter değeri versiyonu. Özellikle bankalar ve varlık ağırlıklı şirketler için anlamlıdır.",
+ uyari:FX_GAP_WARN,nullMsg:"Şirket PD/DD, sektör PD/DD ve fiyat pozitif olmalı.",
+ inputs:[["spd","BİST/Sektör PD/DD"],["pd","Şirket PD/DD"],["borsaFiyat","PD/DD hesaplanırken kullanılan fiyat (TL)"],["guncel","Güncel fiyat (TL) — opsiyonel, kıyas için"]],unit:"TL",
+ calc:v=>fxPos(v.pd)&&fxPos(v.spd)&&fxPos(v.borsaFiyat)?v.spd/v.pd*v.borsaFiyat:null,steps:v=>`(${fxF(v.spd)} ÷ ${fxF(v.pd)}) × ${fxF(v.borsaFiyat)}`,
+ rate:(x,v)=>fxPos(v.guncel)?fxGap((x-v.guncel)/v.guncel*100):null,
+ extra:(v,x)=>fxPos(v.guncel)?[`Güncel fiyat ${fxF(v.guncel)} TL; fark ${fxF(x-v.guncel)} TL (${fpct((x-v.guncel)/v.guncel*100,1)}).`]:[`Güncel fiyat girersen ucuz/pahalı değerlendirmesi de yapılır.`],
+ bands:FX_GAP_BANDS},
+{id:"icsel",cat:"Değerleme",ad:"İçsel değer ve ne kadar ucuz / pahalı",kisa:"F/K ve PD/DD bazlı adil fiyatların ortalaması ile güncel fiyatın farkı.",
+ formul:"İçsel değer = (F/K bazlı fiyat + PD/DD bazlı fiyat) ÷ 2   ·   Ne kadar ucuz/pahalı = İçsel değer − Güncel fiyat",val:true,
+ ne:"Panelin Temel Analiz sekmesindeki ana sonuçtur. İki göreli değerleme yöntemini ortalar ve güncel fiyatla kıyaslar. Fark pozitifse hisse hesaplanan içsel değerin altında (ucuz), negatifse üstünde (pahalı) işlem görüyor demektir.",
+ uyari:FX_GAP_WARN,nullMsg:"Şirket F/K, PD/DD, sektör F/K, sektör PD/DD ve fiyat pozitif olmalı.",
+ inputs:[["fk","Şirket F/K"],["pd","Şirket PD/DD"],["sfk","BİST/Sektör F/K"],["spd","BİST/Sektör PD/DD"],["borsaFiyat","F/K–PD/DD hesaplanırken kullanılan fiyat (TL)"],["guncel","Güncel fiyat (TL) — opsiyonel, kıyas için"]],unit:"TL",
+ calc:v=>(fxPos(v.fk)&&fxPos(v.pd)&&fxPos(v.sfk)&&fxPos(v.spd)&&fxPos(v.borsaFiyat))?((v.sfk/v.fk+v.spd/v.pd)/2)*v.borsaFiyat:null,
+ steps:v=>(fxPos(v.fk)&&fxPos(v.pd)&&fxPos(v.sfk)&&fxPos(v.spd)&&fxPos(v.borsaFiyat))?`(${fxF(v.sfk/v.fk*v.borsaFiyat)} + ${fxF(v.spd/v.pd*v.borsaFiyat)}) ÷ 2`:"",
+ rate:(x,v)=>fxPos(v.guncel)?fxGap((x-v.guncel)/v.guncel*100):null,
+ extra:(v,x)=>fxPos(v.guncel)?[`Güncel fiyat ${fxF(v.guncel)} TL; ne kadar ucuz/pahalı: ${fxF(x-v.guncel)} TL (${fpct((x-v.guncel)/v.guncel*100,1)}).`]:[`Güncel fiyat girersen ne kadar ucuz/pahalı olduğu da hesaplanır.`],
+ bands:FX_GAP_BANDS},
+/* ===== TEMETTÜ VE BÜYÜME ===== */
+{id:"temettu",cat:"Temettü ve büyüme",ad:"Temettü verimi",kisa:"Bugünkü fiyattan alırsan yılda nakit olarak kaç % kazanırsın?",
+ formul:"Temettü verimi = Yıllık hisse başı temettü ÷ Güncel fiyat × 100",
+ ne:"Düzenli nakit getirisini gösterir. Türkiye'de mevduat faizi ve enflasyonla kıyasla: verim bunların altındaysa asıl getiri fiyat artışından beklenir.",
+ uyari:"Çok yüksek verim (%10 ve üzeri) sürdürülemeyen ya da tek seferlik temettünün, ya da düşen fiyatın işareti olabilir. Dağıtım oranına (temettü ÷ kâr) da bak. Aralıklar genel kuraldır, faiz ortamına göre değişir.",
+ inputs:[["temettu","Yıllık temettü (TL/hisse)"],["guncel","Güncel fiyat (TL)"]],unit:"%",
+ calc:v=>fxHas(v.temettu)&&fxPos(v.guncel)?v.temettu/v.guncel*100:null,steps:v=>`${fxF(v.temettu)} ÷ ${fxF(v.guncel)} × 100`,rate:x=>fxRHi(x,5,2),
+ bands:[["iyi","≥ %5","Güçlü nakit getirisi."],["orta","%2 – 5","Orta düzey."],["kotu","< %2","Düşük; getiri esas olarak fiyat artışından beklenir."]]},
+{id:"peg",cat:"Temettü ve büyüme",ad:"PEG oranı",kisa:"F/K, büyüme hızına göre pahalı mı ucuz mu?",
+ formul:"PEG = F/K ÷ Beklenen yıllık kâr büyümesi (%)",val:true,
+ ne:"Yüksek F/K'yı yüksek büyüme haklı çıkarabilir; PEG bunu tek sayıya indirir.",
+ uyari:"Büyüme tahmini bir varsayımdır. Yüksek enflasyonda nominal kâr büyümesi yüksek görünür ve PEG yapay düşük çıkar; mümkünse enflasyondan arındırılmış (reel) büyümeyle de dene.",
+ nullMsg:"F/K ve beklenen büyüme pozitif olmalı.",
+ inputs:[["fk","Şirket F/K"],["buyume","Beklenen yıllık kâr büyümesi (%)"]],unit:"x",
+ calc:v=>fxPos(v.fk)&&fxPos(v.buyume)?v.fk/v.buyume:null,steps:v=>`${fxF(v.fk)} ÷ ${fxF(v.buyume)}`,rate:x=>fxRLo(x,1,2),
+ bands:[["iyi","< 1","Büyümeye göre ucuz (panelin referansı)."],["orta","1 – 2","Makul."],["kotu","> 2","Büyümeye göre pahalı (panelin referansı)."]]},
+/* ===== DUPONT ===== */
+{id:"aktifdevir",cat:"DuPont",ad:"Aktif devir hızı",kisa:"Varlıklar, satışa ne kadar verimli dönüşüyor?",
+ formul:"Aktif devir hızı = Net satışlar ÷ Toplam aktifler",sektor:true,
+ ne:"1 ise her 1 TL varlık yılda 1 TL satış getiriyor demektir. DuPont'ta ROE'nin \"verimlilik\" ayağıdır.",
+ uyari:"Sektöre çok bağlıdır: perakende 2 ve üzeri, sanayi ve enerji 0,3 – 0,8 olabilir.",
+ inputs:[["satis","Net satışlar (TL)"],["aktif","Toplam aktifler (TL)"]],unit:"x",
+ calc:v=>fxPos(v.aktif)?v.satis/v.aktif:null,steps:v=>`${fxF(v.satis)} ÷ ${fxF(v.aktif)}`,rate:x=>fxRHi(x,1,0.5),
+ bands:[["iyi","≥ 1","Varlıklar hızlı satışa dönüyor."],["orta","0,5 – 1","Orta verimlilik."],["kotu","< 0,5","Varlıklar yavaş dönüyor (sermaye yoğun iş ya da verimsizlik)."]]},
+{id:"ozcarpan",cat:"DuPont",ad:"Özsermaye çarpanı (kaldıraç)",kisa:"Ortakların 1 TL'sine karşılık kaç TL varlık var? Borç ne kadar?",
+ formul:"Özsermaye çarpanı = Toplam aktifler ÷ Özkaynaklar",sektor:true,
+ ne:"2 ise varlıkların yarısı borçla finanse edilmiş demektir. DuPont'ta ROE'nin \"borç\" ayağıdır: yükseldikçe ROE artar ama risk de artar.",
+ uyari:"Bankalar 8 – 12 gibi yüksek değerlerle çalışır; sadece sektörüyle kıyasla.",
+ inputs:[["aktif","Toplam aktifler (TL)"],["ozkaynak","Özkaynaklar (TL)"]],unit:"x",
+ calc:v=>fxPos(v.ozkaynak)?v.aktif/v.ozkaynak:null,steps:v=>`${fxF(v.aktif)} ÷ ${fxF(v.ozkaynak)}`,rate:x=>fxRLoE(x,2,3),
+ bands:[["iyi","≤ 2","Varlıkların en fazla yarısı borçla finanse ediliyor."],["orta","2 – 3","Orta düzey borçluluk."],["kotu","> 3","Yüksek kaldıraç; ROE borçla şişmiş olabilir."]]},
+{id:"dupont",cat:"DuPont",ad:"DuPont ROE ayrıştırması",kisa:"ROE'nin kaynağı: kâr marjı mı, verimlilik mi, yoksa borç mu?",
+ formul:"ROE = Net kâr marjı × Aktif devir hızı × Özsermaye çarpanı",
+ ne:"ROE'yi üç parçaya böler ve hangisinin öne çıktığını gösterir. Aynı ROE'yi veren iki şirketten biri verimli, diğeri sadece borçlu olabilir. Sonuç, ROE formülüyle aynı çıkmalıdır (kontrol).",
+ uyari:"Bileşen yorumları kaba bir rehberdir; şirketin sektörüne göre değerlendir. Reel faiz girersen ROE panelin kuralıyla derecelendirilir.",
+ inputs:[["netkar","Net kâr (TL) — yıllık"],["satis","Net satışlar (TL)"],["aktif","Toplam aktifler (TL)"],["ozkaynak","Özkaynaklar (TL)"],["reel","Reel piyasa faizi (%) — opsiyonel"]],unit:"%",
+ calc:v=>(fxPos(v.satis)&&fxPos(v.aktif)&&fxPos(v.ozkaynak))?(v.netkar/v.satis)*(v.satis/v.aktif)*(v.aktif/v.ozkaynak)*100:null,
+ steps:v=>(fxPos(v.satis)&&fxPos(v.aktif)&&fxPos(v.ozkaynak))?`${fpct(v.netkar/v.satis*100,2)} × ${fnum(v.satis/v.aktif,2)} × ${fnum(v.aktif/v.ozkaynak,2)}`:"",
+ rate:fxRoeRate,
+ extra:(v,x)=>{ const nm=v.netkar/v.satis*100, dev=v.satis/v.aktif, car=v.aktif/v.ozkaynak;
+   const s = car>3 ? `ROE'nin önemli kısmı borçtan (kaldıraç) geliyor; borç yükü ve faiz riskine dikkat.`
+     : nm>=10 ? `ROE ağırlıklı olarak yüksek kâr marjından geliyor: sağlıklı bir işaret.`
+     : dev>=1 ? `ROE ağırlıklı olarak varlıkların hızlı satışa dönmesinden geliyor (düşük marjlı, yüksek devirli iş modeli).`
+     : `Üç bileşen de belirgin öne çıkmıyor; ROE'nin düşük kalması doğal.`;
+   return [`Net kâr marjı ${fpct(nm,2)} × Aktif devir hızı ${fnum(dev,2)} × Özsermaye çarpanı ${fnum(car,2)}.`, s]; },
+ bands:[["iyi","> reel faiz","ROE risksiz getirinin üzerinde (reel faiz girilmezse ≥ %15)."],["orta","0 – reel faiz","Kâr var ama risksiz getirinin gerisinde (reel faiz girilmezse %5 – 15)."],["kotu","≤ 0","Zarar var ya da ROE çok düşük (reel faiz girilmezse < %5)."]]},
+/* ===== FİRMA DEĞERİ ===== */
+{id:"ev",cat:"Firma değeri çarpanları",ad:"Firma değeri (EV)",kisa:"Şirketi satın almanın gerçek maliyeti (borç dahil, nakit düşülmüş).",
+ formul:"EV = Piyasa değeri + Toplam finansal borç − Hazır değerler",
+ ne:"Hisseleri satın almak yetmez; borç da üstlenilir, nakit ise ele geçer. EV bu yüzden borçlu ve borçsuz şirketleri adil karşılaştırmak için kullanılır. Kendi başına iyi/kötü değeri yoktur; EV/FAVÖK ve benzeri çarpanların payıdır.",
+ bilgi:"Tek başına derecelendirilmez. EV/FAVÖK hesabında kullanılır.",
+ inputs:[["piyasaDeger","Piyasa değeri (TL)"],["tborc","Toplam finansal borç (faiz taşıyan yükümlülükler, TL)"],["nakit","Hazır değerler / nakit (TL)"]],unit:"TL",
+ calc:v=>fxPos(v.piyasaDeger)&&fxHas(v.tborc)&&fxHas(v.nakit)?v.piyasaDeger+v.tborc-v.nakit:null,steps:v=>`${fxF(v.piyasaDeger)} + ${fxF(v.tborc)} − ${fxF(v.nakit)}`,
+ bands:[]},
+{id:"evfavok",cat:"Firma değeri çarpanları",ad:"EV / FAVÖK",kisa:"Firma değeri, operasyonel kârın kaç katı?",
+ formul:"EV/FAVÖK = (Piyasa değeri + Toplam finansal borç − Hazır değerler) ÷ FAVÖK",sektor:true,val:true,
+ ne:"F/K'den farklı olarak borcu hesaba katar; borç yapısı farklı şirketleri kıyaslamak için daha sağlıklıdır.",
+ uyari:"Sektörden sektöre çok değişir (sanayide 4 – 8, teknoloji ve sağlıkta daha yüksek olabilir); sadece benzer şirketlerle kıyasla. FAVÖK sıfır ya da negatifse hesaplanamaz.",
+ nullMsg:"Piyasa değeri ve FAVÖK pozitif olmalı; borç ve nakit de girilmeli.",
+ inputs:[["piyasaDeger","Piyasa değeri (TL)"],["tborc","Toplam finansal borç (faiz taşıyan yükümlülükler, TL)"],["nakit","Hazır değerler / nakit (TL)"],["favok","FAVÖK (TL) — yıllık"]],unit:"x",
+ calc:v=>fxPos(v.piyasaDeger)&&fxHas(v.tborc)&&fxHas(v.nakit)&&fxPos(v.favok)?(v.piyasaDeger+v.tborc-v.nakit)/v.favok:null,
+ steps:v=>`(${fxF(v.piyasaDeger)} + ${fxF(v.tborc)} − ${fxF(v.nakit)}) ÷ ${fxF(v.favok)}`,rate:x=>fxRLoE(x,6,10),
+ bands:[["iyi","≤ 6","Operasyonel kâra göre ucuz."],["orta","6 – 10","Makul."],["kotu","> 10","Operasyonel kâra göre pahalı."]]},
+{id:"pds",cat:"Firma değeri çarpanları",ad:"PD / Satışlar (PD/S)",kisa:"Piyasa değeri, yıllık satışların kaç katı?",
+ formul:"PD/S = Piyasa değeri ÷ Net satışlar",sektor:true,val:true,
+ ne:"Zarar eden ya da kâr marjı geçici düşmüş şirketlerde F/K kullanılamadığında devreye girer.",
+ uyari:"Marjı düşük sektörlerde (perakende, dağıtım) PD/S doğal olarak küçük, yüksek marjlı sektörlerde büyüktür; kâr marjıyla birlikte oku.",
+ inputs:[["piyasaDeger","Piyasa değeri (TL)"],["satis","Net satışlar (TL)"]],unit:"x",
+ calc:v=>fxPos(v.piyasaDeger)&&fxPos(v.satis)?v.piyasaDeger/v.satis:null,steps:v=>`${fxF(v.piyasaDeger)} ÷ ${fxF(v.satis)}`,rate:x=>fxRLoE(x,1,3),
+ bands:[["iyi","≤ 1","Satışlara göre ucuz."],["orta","1 – 3","Makul."],["kotu","> 3","Satışlara göre pahalı; yüksek marj bunu haklı çıkarıyor mu bak."]]},
+/* ===== KUR RİSKİ ===== */
+{id:"netdoviz",cat:"Kur riski",ad:"Net döviz pozisyonu",kisa:"Kur artarsa şirket kazanır mı, kaybeder mi?",
+ formul:"Net döviz pozisyonu = Döviz varlıkları − Döviz yükümlülükleri (TL karşılığı)",
+ ne:"Pozitifse şirket \"net uzun\": TL değer kaybettiğinde kazanır. Negatifse \"açık pozisyon\": kur yükseldikçe borçlar TL bazında büyür ve kâr erir. İthalatçı/ihracatçı şirketlerde (TUPRS, THYAO gibi) önemlidir.",
+ uyari:"Şirketin türev işlemlerle (hedge) açığı kapatıp kapatmadığı bu rakamda görünmeyebilir; dipnotlara bak. İhracat gelirleri açığı doğal olarak dengeleyebilir. Açığın büyüklüğü için özkaynak girersen derecelendirme yapılır.",
+ inputs:[["dovizVarlik","Döviz varlıkları (TL karşılığı)"],["dovizYukumluluk","Döviz yükümlülükleri (TL karşılığı)"],["ozkaynak","Özkaynaklar (TL) — opsiyonel, açığı ölçmek için"]],unit:"TL",
+ calc:v=>fxHas(v.dovizVarlik)&&fxHas(v.dovizYukumluluk)?v.dovizVarlik-v.dovizYukumluluk:null,steps:v=>`${fxF(v.dovizVarlik)} − ${fxF(v.dovizYukumluluk)}`,
+ rate:(x,v)=>x>=0?"iyi":(fxPos(v.ozkaynak)?((-x)/v.ozkaynak*100<25?"orta":"kotu"):null),
+ extra:(v,x)=>x>=0?[]:(fxPos(v.ozkaynak)?[`Net açık, özkaynağın ${fpct(-x/v.ozkaynak*100,1)} kadarı.`]:[`Açığın ne kadar ciddi olduğunu değerlendirmek için özkaynak gir.`]),
+ bands:[["iyi","≥ 0 (net uzun)","Kur artışı şirketin lehine ya da nötr."],["orta","Açık; özkaynağın %25'inden az","Kur artışı kârı aşındırır ama yönetilebilir düzeyde."],["kotu","Açık; özkaynağın %25'i ve üzeri","Kur şoku özkaynağı ciddi aşındırabilir."]]},
+/* ===== NAKİT DÖNÜŞÜM ===== */
+{id:"stokgun",cat:"Nakit dönüşüm süresi",ad:"Stok gün sayısı",kisa:"Stok ortalama kaç günde satılıyor?",
+ formul:"Stok günü = (Stoklar ÷ Satışların maliyeti) × 365",sektor:true,
+ ne:"Stokta bekleyen paranın kaç gün bağlı kaldığını gösterir. Düşük olması malın hızlı satıldığını gösterir.",
+ uyari:"Sektöre çok bağlı (market 20 – 40, otomotiv/beyaz eşya 60 – 120 gün olabilir). Dönem sonu stok kullanılır; mevsimsel şirketlerde ortalama stokla daha doğru sonuç çıkar.",
+ inputs:[["stok","Stoklar (TL)"],["cogs","Satışların maliyeti / COGS (TL) — yıllık"]],unit:"gün",
+ calc:v=>fxPos(v.cogs)&&fxHas(v.stok)?v.stok/v.cogs*365:null,steps:v=>`(${fxF(v.stok)} ÷ ${fxF(v.cogs)}) × 365`,rate:x=>fxRLoE(x,60,120),
+ bands:[["iyi","≤ 60 gün","Stok hızlı dönüyor."],["orta","60 – 120 gün","Orta hızda."],["kotu","> 120 gün","Stok uzun süre bekliyor; para bağlı kalıyor."]]},
+{id:"alacakgun",cat:"Nakit dönüşüm süresi",ad:"Alacak gün sayısı",kisa:"Satış parasını tahsil etmek kaç gün sürüyor?",
+ formul:"Alacak günü = (Ortalama ticari alacaklar ÷ Net satışlar) × 365",sektor:true,
+ ne:"Müşterilere vadeli satılan malın tahsili için geçen ortalama süre. Uzadıkça şirketin nakde ihtiyacı artar ve tahsilat riski büyür.",
+ uyari:"Şirketlere satış yapan (B2B) sektörlerde 60 – 90 gün olağandır; perakendede çok düşüktür.",
+ inputs:[["ortAlacak","Ortalama ticari alacaklar (TL)"],["satis","Net satışlar (TL) — yıllık"]],unit:"gün",
+ calc:v=>fxPos(v.satis)&&fxHas(v.ortAlacak)?v.ortAlacak/v.satis*365:null,steps:v=>`(${fxF(v.ortAlacak)} ÷ ${fxF(v.satis)}) × 365`,rate:x=>fxRLoE(x,45,90),
+ bands:[["iyi","≤ 45 gün","Tahsilat hızlı."],["orta","45 – 90 gün","Orta vade."],["kotu","> 90 gün","Tahsilat yavaş; nakit sıkışıklığı ve tahsilat riski."]]},
+{id:"borcgun",cat:"Nakit dönüşüm süresi",ad:"Borç gün sayısı",kisa:"Tedarikçilere ortalama kaç günde ödeme yapılıyor?",
+ formul:"Borç günü = (Ortalama ticari borçlar ÷ Satışların maliyeti) × 365",
+ ne:"Şirketin tedarikçilerden ne kadar süre \"kredi\" kullandığını gösterir. Uzun olması nakit için avantajdır ama şirketin tedarikçi karşısındaki gücünü de yansıtır.",
+ uyari:"Aşırı uzun ödeme süresi (120+ gün) nakit sıkışıklığı işareti olabilir. Bu yüzden tek başına iyi/kötü diye derecelendirilmez; stok ve alacak günüyle birlikte (nakit dönüşüm süresi) oku.",
+ bilgi:"Tek başına derecelendirilmez. Nakit dönüşüm süresinde stok ve alacak günüyle birlikte yorumlanır.",
+ inputs:[["ortBorc","Ortalama ticari borçlar (TL)"],["cogs","Satışların maliyeti / COGS (TL) — yıllık"]],unit:"gün",
+ calc:v=>fxPos(v.cogs)&&fxHas(v.ortBorc)?v.ortBorc/v.cogs*365:null,steps:v=>`(${fxF(v.ortBorc)} ÷ ${fxF(v.cogs)}) × 365`,
+ bands:[]},
+{id:"ccc",cat:"Nakit dönüşüm süresi",ad:"Nakit dönüşüm süresi",kisa:"Ödenen paranın tekrar kasaya dönmesi kaç gün sürüyor?",
+ formul:"Nakit dönüşüm süresi = Stok günü + Alacak günü − Borç günü",sektor:true,
+ ne:"Mal alımı/üretim için harcanan paranın, satış tahsilatıyla geri dönmesine kadar geçen gün sayısı. Kısa olması işletme sermayesinin verimli kullanıldığını gösterir; negatifse şirket tedarikçi parasıyla çalışıyor demektir.",
+ uyari:"Sektör farkı büyüktür (market negatif, sanayi 90+ gün olabilir). Trende bak: süre uzuyorsa işletme sermayesi sıkışıyor demektir.",
+ nullMsg:"Tüm kutuları doldur; satış ve satışların maliyeti pozitif olmalı.",
+ inputs:[["stok","Stoklar (TL)"],["cogs","Satışların maliyeti / COGS (TL) — yıllık"],["ortAlacak","Ortalama ticari alacaklar (TL)"],["satis","Net satışlar (TL) — yıllık"],["ortBorc","Ortalama ticari borçlar (TL)"]],unit:"gün",
+ calc:v=>(fxPos(v.cogs)&&fxPos(v.satis)&&fxHas(v.stok)&&fxHas(v.ortAlacak)&&fxHas(v.ortBorc))?v.stok/v.cogs*365+v.ortAlacak/v.satis*365-v.ortBorc/v.cogs*365:null,
+ steps:v=>(fxPos(v.cogs)&&fxPos(v.satis))?`${fnum(v.stok/v.cogs*365,0)} + ${fnum(v.ortAlacak/v.satis*365,0)} − ${fnum(v.ortBorc/v.cogs*365,0)}`:"",
+ rate:x=>fxRLoE(x,30,90),
+ extra:(v,x)=>[`Stok günü ${fnum(v.stok/v.cogs*365,0)} + Alacak günü ${fnum(v.ortAlacak/v.satis*365,0)} − Borç günü ${fnum(v.ortBorc/v.cogs*365,0)}.`],
+ bands:[["iyi","≤ 30 gün (negatif de olabilir)","Para hızlı geri dönüyor; işletme sermayesi verimli."],["orta","30 – 90 gün","Orta düzey."],["kotu","> 90 gün","Para uzun süre işin içinde bağlı; finansman ihtiyacı artar."]]}
+];
+const FX_BY={}; FX_LIST.forEach(f=>{FX_BY[f.id]=f;});
+
+/* ----- Rehber: karar rehberi kartları (Word rehberi 7-9. bölümler) ----- */
+const fxTbl=(head,rows)=>`<div class="scroll"><table><thead><tr>${head.map(t=>`<th style="text-align:left">${t}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(t=>`<td style="text-align:left; vertical-align:top">${t}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+const fxOl=a=>a.map((t,i)=>`<div style="padding:3px 0"><b>${i+1}. ${t[0]}</b> ${t[1]}</div>`).join("");
+const FX_DOCS=[
+{top:1,ad:"Hangi göstergeye önce bakılır? Önem sırası ve karar süreci",sub:"temel analize nereden başlanır",html:
+`<div class="pad"><div class="note" style="padding:0 0 10px">Oranların hepsi aynı ağırlıkta değildir. Bu sıra genel bir analiz yaklaşımıdır; sektöre ve şirkete göre değişir, yatırım tavsiyesi değildir. Panelde “Öncelikli göstergeler” kutusu aynı sırayı canlı rakamlarla gösterir.</div>`+
+fxTbl(["Sıra","Sorulacak soru","Bakılacak göstergeler","Neden bu sırada?"],[
+["1","Kâr gerçek mi, nakde dönüyor mu?","CFO / Net Kâr, FCF, FCF Marjı","Kâr nakde dönmüyorsa diğer oranların değeri düşer. Tek dönem yerine 3–5 dönem izle; büyüyen şirkette stok ve alacağa bağlanan nakit geçici sapma yaratabilir."],
+["2","Sermaye yeterli getiri üretiyor mu?","ROIC, ROE (DuPont ile), ROIC − WACC","Uzun vadede hisse getirisini en çok sermayenin verimli kullanılması belirler. Yüksek ROE’nin borçtan gelip gelmediğini DuPont ile kontrol et."],
+["3","Borç ve kur riski taşınabilir mi?","Net Borç / FAVÖK, Faiz Karşılama, Borç / Özkaynak, net döviz pozisyonu, borç vadesi","Türkiye’de kur ve faiz etkisi kârı hızla silebilir; operasyonel kâr güçlü görünürken kur farkı giderleri sonucu bozabilir."],
+["4","Marjlar ve büyüme sağlıklı mı?","Brüt, FAVÖK ve net kâr marjı; satış büyümesi","Trend önemlidir. Marj daralırken gelen büyüme ya da tek seferlik kalemlerle şişen kâr uyarı işaretidir."],
+["5","Fiyat makul mü?","F/K, PD/DD, FD/FAVÖK, PEG, FCF verimi","İyi şirket pahalıya alınırsa iyi yatırım olmaz; ama fiyat sorusu kalite sorularından sonra gelir. Döngüsel sektörlerde kâr zirvedeyken F/K düşük görünür."],
+["6","Kısa vadede sıkışır mı?","Cari oran, asit-test, nakit oranı","Bir eleme filtresidir: çok zayıfsa dikkat gerekir, ancak 1,5 ile 2,5 arasındaki şirketleri birbirinden ayırmaz."],
+["7","İşletme sermayesi verimli mi?","CCC, DSO, DIO, DPO","Sürelerin yıldan yıla uzaması nakit sıkışmasının erken işaretidir."],
+["8","Ortağa nakit dönüyor mu?","Temettü verimi, dağıtım oranı","Temettü odaklı yatırımcı için üst sıralara çıkar. Çok yüksek verim çoğu zaman düşen fiyatın sonucudur; FCF ve borçla birlikte oku."],
+["9","Rakamlarda tuhaflık var mı?","Altman Z, Piotroski F, Beneish M","İlk süzgeç olarak kullanılır; tek başına karar vermez. Bankalarda ve finansal kuruluşlarda kullanılmaz."]])+
+`<div style="margin-top:14px; font-weight:500">Eleme → kalite → fiyat: pratik sıra</div>`+
+fxOl([["Eleme:","1., 3. ve 6. sıradaki sorulara bak. Kâr nakde dönmüyor, borç ve kur riski ağır ya da likidite çok zayıfsa şirketi bu aşamada listeden çıkarmak çoğu zaman mantıklıdır."],
+["Kalite:","Elemeyi geçen şirkette getiri ve marjları (2. ve 4. sıra) 3–5 dönem için karşılaştır. Trend yukarı mı, yatay mı, aşağı mı?"],
+["Fiyat:","Değerlemeye (5. sıra) en son bak, emsal şirketler ve büyüme beklentisiyle birlikte oku. Sektör çarpanlarıyla hesaplanan “adil fiyat” göreli bir tahmindir; sektörün kendisi pahalıysa şirket de ucuz görünür."],
+["Rakamların dışı:","İş modeli, rekabet gücü, yönetim kalitesi, sektör döngüsü, KAP açıklamaları ve dipnotlar. Rakamlar iyi görünüp hikâye bozuksa bu adımda ortaya çıkar."],
+["Karar:","Bu adımlardan geçen şirketler “ciddi inceleme listesi”ne girer. Alım kararı bunun üstüne fiyatı, mevcut portföyü, portföydeki ağırlığı ve zarar-kes seviyesini de içerir; bunlar analizden önce belirlenmelidir."]])+
+`</div><div class="note"><b>Sonuç okuması:</b> Bu sıra “bu şirket araştırmaya değer mi?” sorusuna cevap verir. “Alınır mı?” sorusu ayrıca fiyatı, portföyü ve kişisel risk toleransını gerektirir. Hiçbir oran ya da renk tek başına al/sat sinyali değildir.</div>`},
+{top:0,ad:"Sektöre göre okuma farkları",sub:"aynı oran her sektörde aynı anlama gelmez",html:
+`<div class="pad">`+fxTbl(["Sektör / şirket tipi","Öne çıkan göstergeler","Sınırlı kalanlar / dikkat"],[
+["Banka ve sigorta","Banka: PD/DD, ROE, net faiz marjı, takipteki kredi oranı, sermaye yeterliliği. Sigorta: hasar/prim (bileşik) oranı, ROE, PD/DD.","Cari oran, borç oranları, FAVÖK ve FD çarpanları, Altman Z ve CCC uygulanmaz; borç bu kuruluşların ham maddesidir."],
+["Holding","Net aktif değer (NAV) iskontosu, iştirak ve bağlı ortaklık değerleri, konsolide borç ve kur pozisyonu, temettü geliri.","Tek başına F/K ve konsolide marjlar yanıltabilir; iştirak değerleri özkaynak yöntemiyle kâra yansıyabilir."],
+["Sanayi / imalat","CCC, stok devir hızı, FAVÖK marjı, ROIC, Net Borç / FAVÖK, Capex ve FCF. Altman Z bu grupta uygundur.","Kur ve hammadde maliyeti etkisi; enflasyon muhasebesi marjları bozabilir."],
+["Perakende","Stok devir hızı, satış büyümesi (mağaza açılışı ile aynı mağaza etkisini ayır), FAVÖK marjı, borç ve kira yükümlülükleri.","Negatif CCC ve 1 civarı cari oran normal olabilir; nominal satış büyümesi enflasyonla şişebilir. Kira yükümlülüklerinin (TFRS 16) net borca dahil edilip edilmediğine dikkat et."],
+["Döngüsel sektörler (metal, petrokimya, enerji, otomotiv gibi)","FD/FAVÖK, PD/DD, 3–5 yıllık ortalama marj, normalleştirilmiş kâr, Net Borç / FAVÖK.","Kâr zirvedeyken F/K düşük görünür ve ucuzluk sanılabilir; kâr dipteyken F/K yüksek çıkar."]])+`</div>`},
+{top:0,ad:"Panelin sınırları ve kullanım",sub:"panel karar aracı değil, ön eleme aracıdır",html:
+`<div class="pad">`+fxOl([["Kodu yaz, rakamları bir kez gir.","Aynı dönemi ve aynı konsolidasyon kapsamını kullan; tüm rakamlar aynı birimde olmalıdır."],
+["“Öncelikli göstergeler” kutusuna bak.","Yukarıdaki dokuz soruyu aynı sırayla gösterir; satırın üzerine gelince eşik açıklaması görünür."],
+["Ayrıntı için tabloya bak.","Tüm göstergeler formülleri ve eşikleriyle sonuç tablosunda."],
+["“Hesapla ve kaydet”.","Kayıtlı hisseler özet tablosunda ve hesaplayıcıdaki “Kayıtlı hisseden doldur” seçeneğinde kullanılır."]])+
+`<div style="margin:14px 0 8px; font-weight:500">Sınırlar</div>`+fxTbl(["Sınır","Ne anlama gelir / ne yapılmalı?"],[
+["Tek dönem","Her hisse için tek kayıt tutulur ve rakamlar tek bir dönem için girilir. Dönem başı ve sonu bakiyeleriyle ortalama hesaplanır, ancak çok dönemli trend tablosu yoktur; 3–5 dönemlik trendi kendi notlarında ayrıca izle."],
+["Sabit eşikler","Eşikler genel başlangıç referansıdır; sektör standardı değildir. Şirketi kendi geçmişi ve emsalleriyle karşılaştır."],
+["Göreli “içsel değer”","Sektör F/K ve PD/DD çarpanlarına göre bir adil fiyattır. Sektör pahalıysa şirket ucuz görünür. Nakit akışı tahminine dayalı bir değerleme (DCF) değildir."],
+["Enflasyon muhasebesi ve yüksek faiz","TMS 29 döneminde marj, ROE ve F/K yanıltıcı olabilir. Risksiz faiz yüksek olduğundan WACC yüksek çıkar ve ROIC − WACC birçok şirkette negatif görünebilir; sonucu trend ve emsalle birlikte oku."],
+["Model sınırları","Altman ve Piotroski imalat tipi şirketler için tasarlanmıştır; bankalarda ve holdinglerde anlamlı değildir. Beneish yalnızca inceleme sinyalidir."],
+["Nitel unsurlar","İş modeli, rekabet gücü, yönetim kalitesi ve sektör döngüsü panelin dışındadır; ayrıca araştırılmalıdır."],
+["Elle veri girişi","Yanlış birim ya da yanlış kalem sonucu bozar. Örneğin hisse sayısı ve fiyat diğer kalemlerle aynı birimde değilse F/K yüzbinlerle ifade edilen anlamsız değerlere çıkar. Girdileri KAP’taki rakamlarla kontrol et."]])+`</div>`}
+];
+FX_DOCS.forEach(d=>{ d.txt=d.html.replace(/<[^>]+>/g," "); });
+const fxDocHtml=d=>`<div class="card"><h2>${d.ad} <span>${d.sub}</span></h2>${d.html}</div>`;
+
+/* ----- Rehber ----- */
+function fxBandsHtml(f,activeKey){
+  if(!f.bands.length) return `<div class="note" style="padding:0">${esc(f.bilgi||"")}</div>`;
+  const L=f.val?FX_LBL_VAL:FX_LBL;
+  return `<div class="bands">`+f.bands.map(b=>`<div class="band${activeKey===b[0]?" on":""}"><span class="tag ${b[0]}">${esc(L[b[0]])}</span><span class="num band-r">${esc(b[1])}</span><span class="band-t">${esc(b[2])}</span></div>`).join("")+`</div>`;
+}
+function fxItemHtml(f){
+  return `<details class="fx" id="fxg-${f.id}"><summary><b>${esc(f.ad)}</b>${f.sektor?` <span class="tag ok">sektöre göre değişir</span>`:""}<span class="fx-k">${esc(f.kisa)}</span></summary>
+  <div class="fx-body">
+    <div class="fx-h">Formül</div><div class="fx-formula">${esc(f.formul)}</div>
+    <div class="fx-h">Ne işe yarar, neyi anlatır?</div><div>${esc(f.ne)}</div>
+    <div class="fx-h">Kaç olursa iyi, kaç olursa kötü?</div>${fxBandsHtml(f)}
+    ${f.uyari?`<div class="fx-h">Dikkat</div><div class="fx-warn">${esc(f.uyari)}</div>`:""}
+    <div style="margin-top:12px"><button type="button" class="btn ghost mini" data-fx-calc="${f.id}">Bunu hesapla</button></div>
+  </div></details>`;
+}
+function fxRenderGuide(q){
+  q=(q||"").trim().toLocaleLowerCase("tr");
+  const docs=FX_DOCS.filter(d=>!q||(d.ad+" "+d.txt).toLocaleLowerCase("tr").includes(q));
+  let html=docs.filter(d=>d.top).map(fxDocHtml).join("");
+  for(const cat of FX_CATS){
+    const items=FX_LIST.filter(f=>f.cat===cat && (!q || (f.ad+" "+f.kisa+" "+f.formul+" "+f.id).toLocaleLowerCase("tr").includes(q)));
+    if(!items.length) continue;
+    html+=`<div class="card"><h2>${esc(cat)} <span>${items.length} formül</span></h2>${items.map(fxItemHtml).join("")}</div>`;
+  }
+  html+=docs.filter(d=>!d.top).map(fxDocHtml).join("");
+  document.getElementById("fx-guide").innerHTML = html || `<div class="card"><div class="empty">Aramana uyan formül yok.</div></div>`;
+}
+
+/* ----- Hesaplayıcı ----- */
+let fxCur=null;
+function fxNum(x){ const s=String(x==null?"":x).trim().replace(",","."); if(s==="") return NaN; const n=Number(s); return isFinite(n)?n:NaN; }
+function fxFmt(f,val){
+  if(f.unit==="%") return fpct(val,2);
+  if(f.unit==="gün") return fnum(val,0)+" gün";
+  if(f.unit==="TL") return fxF(val)+" TL";
+  return fnum(val,2)+"×";
+}
+function fxFillSelect(){
+  document.getElementById("fx-sel").innerHTML=FX_CATS.map(c=>`<optgroup label="${esc(c)}">`+FX_LIST.filter(f=>f.cat===c).map(f=>`<option value="${f.id}">${esc(f.ad)}</option>`).join("")+`</optgroup>`).join("");
+}
+function fxRefreshSyms(){
+  const el=document.getElementById("fx-sym"), cur=el.value, syms=Object.keys(S.fund||{}).sort();
+  el.innerHTML=`<option value="">— seç —</option>`+syms.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
+  el.value=syms.includes(cur)?cur:"";
+}
+function fxSelect(id){
+  fxCur=FX_BY[id]; if(!fxCur) return;
+  document.getElementById("fx-sel").value=id;
+  document.getElementById("fx-formula").textContent=fxCur.formul;
+  document.getElementById("fx-inputs").innerHTML=fxCur.inputs.map(([k,l])=>`<div><label for="fxi-${k}">${esc(l)}</label><input type="number" step="any" inputmode="decimal" id="fxi-${k}" data-k="${k}"></div>`).join("");
+  document.getElementById("fx-sym").value="";
+  fxCompute();
+}
+function fxRead(){ const v={}; for(const [k] of fxCur.inputs) v[k]=fxNum(document.getElementById("fxi-"+k).value); return v; }
+function fxCompute(){
+  const f=fxCur; if(!f) return;
+  const v=fxRead(), out=document.getElementById("fx-result"), bandsEl=document.getElementById("fx-bands");
+  let val=null; try{ val=f.calc(v); }catch(e){ val=null; }
+  if(val==null || !isFinite(val)){
+    const anyIn=f.inputs.some(([k])=>fxHas(v[k]));
+    out.innerHTML = anyIn ? `<span class="down">Hesaplanamadı.</span> ${esc(f.nullMsg||"Zorunlu kutuları doldur; bölen (payda) sıfır ya da negatif olamaz.")}` : `Rakamları girince sonuç burada görünür.`;
+    bandsEl.innerHTML=fxBandsHtml(f); return;
+  }
+  let key=null; try{ key=f.rate?f.rate(val,v):null; }catch(e){ key=null; }
+  const L=f.val?FX_LBL_VAL:FX_LBL;
+  const band=key?f.bands.find(b=>b[0]===key):null;
+  let extras=[]; try{ extras=f.extra?f.extra(v,val):[]; }catch(e){ extras=[]; }
+  const st=f.steps(v);
+  out.innerHTML=`<div class="fx-res"><span class="fx-big num">${esc(fxFmt(f,val))}</span>${key?`<span class="tag ${key}">${esc(L[key])}</span>`:""}</div>
+    ${st?`<div class="fx-steps num">${esc(st)} = ${esc(fxFmt(f,val))}</div>`:""}
+    ${band?`<div>${esc(band[2])}</div>`:""}
+    ${extras.map(t=>`<div class="fx-steps" style="margin-top:6px">${esc(t)}</div>`).join("")}`;
+  bandsEl.innerHTML=fxBandsHtml(f,key);
+}
+function fxFillFromSym(sym){
+  const d=(S.fund&&S.fund[sym])||null; if(!d||!fxCur) return;
+  for(const [k] of fxCur.inputs){ const el=document.getElementById("fxi-"+k); if(!el) continue; const raw=d[k]; el.value=(raw===undefined||raw===null)?"":String(raw); }
+  fxCompute();
+}
+function fxMode(m){
+  const calc=m==="hesap";
+  document.getElementById("fx-guide").hidden=calc;
+  document.getElementById("fx-calc").hidden=!calc;
+  document.getElementById("fx-search-wrap").hidden=calc;
+  document.getElementById("fx-mode-rehber").setAttribute("aria-pressed",String(!calc));
+  document.getElementById("fx-mode-hesap").setAttribute("aria-pressed",String(calc));
+  if(calc) fxRefreshSyms();
+}
+document.getElementById("fx-mode-rehber").addEventListener("click",()=>fxMode("rehber"));
+document.getElementById("fx-mode-hesap").addEventListener("click",()=>fxMode("hesap"));
+document.getElementById("fx-search").addEventListener("input",e=>fxRenderGuide(e.target.value));
+document.getElementById("fx-guide").addEventListener("click",e=>{
+  const b=e.target.closest("[data-fx-calc]"); if(!b) return;
+  fxMode("hesap"); fxSelect(b.dataset.fxCalc); window.scrollTo({top:0,behavior:"smooth"});
+});
+document.getElementById("fx-sel").addEventListener("change",e=>fxSelect(e.target.value));
+document.getElementById("fx-sym").addEventListener("focus",fxRefreshSyms);
+document.getElementById("fx-sym").addEventListener("change",e=>{ if(e.target.value) fxFillFromSym(e.target.value); });
+document.getElementById("fx-inputs").addEventListener("input",fxCompute);
+document.getElementById("fx-clear").addEventListener("click",()=>{
+  for(const el of document.querySelectorAll("#fx-inputs input")) el.value="";
+  document.getElementById("fx-sym").value=""; fxCompute();
+});
+document.getElementById("fx-toguide").addEventListener("click",()=>{
+  if(!fxCur) return;
+  document.getElementById("fx-search").value=""; fxRenderGuide(""); fxMode("rehber");
+  const d=document.getElementById("fxg-"+fxCur.id); if(d){ d.open=true; d.scrollIntoView({behavior:"smooth",block:"start"}); }
+});
+function fxInit(){ fxFillSelect(); fxRenderGuide(""); fxSelect(FX_LIST[0].id); fxRefreshSyms(); }
+
+/* ---------- Başlat ---------- */
+(function init(){
+  document.getElementById("f-d").value=new Date().toISOString().slice(0,10);
+  try{
+    const l=lsGet(LS_KEY);
+    if(l) S=norm(JSON.parse(l));
+  }catch(e){}
+  render();
+  fxInit();
+  xlInit();
+  sbInit();
+})();
+
+(async ()=>{
+  try{ downloads = await window.claude?.use?.("downloads") || null; }catch(e){ downloads=null; }
+})();
+</script>
+</body>
+</html>
